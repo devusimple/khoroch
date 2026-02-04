@@ -25,7 +25,6 @@ import {
 
 import DateTimePicker from "@/components/date-time-picker";
 import { Wallet } from "@/types";
-import { useBalanceStore } from "@/utils/store/balance.store";
 import { useTransactionStore } from "@/utils/store/transaction.store";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";

@@ -2,7 +2,7 @@
   "expo": {
     "name": "KHOROCH",
     "slug": "khoroch",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "khoroch",
@@ -23,7 +23,16 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.huzzathasan.khoroch"
+      "package": "com.huzzathasan.khoroch",
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -58,8 +67,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "ab22dfff-98a8-4365-b959-5fdd4055ff41"
+        "projectId": "2aa1fb69-3f53-4143-b3d3-a1e5482c74a6"
       }
-    }
+    },
+    "owner": "huzzathasan"
   }
 }

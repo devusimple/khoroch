@@ -18,4 +18,4 @@ export interface MonthYearState {
 export const useMonthYearStore = create<MonthYearState>((set) => ({
     date: new Date(),
     setDate: (date: Date) => set({ date }),
-}))
+}));

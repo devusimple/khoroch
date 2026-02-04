@@ -9,7 +9,7 @@ import { useTransactionStore } from "@/utils/store/transaction.store";
 import { useSQLiteContext } from "expo-sqlite";
 import { ListMinusIcon } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from "react-native";
+import { FlatList, RefreshControl, Text, View } from "react-native";
 
 export default function Home() {
     const db = useSQLiteContext();
@@ -40,7 +40,7 @@ export default function Home() {
         return (
             <View style={{ paddingVertical: 20 }}>
                 {/* <ActivityIndicator size="small" color="#000" /> */}
-                <SuspenseFallback />
+                <SuspenseFallback iconSize={18} textSize={14} />
             </View>
         );
     };

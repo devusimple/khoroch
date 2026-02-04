@@ -28,7 +28,6 @@ type DateTimePickerProps = {
 const ITEM_HEIGHT = 50;
 const VISIBLE_ITEMS = 5; // e.g. 2 above, 1 center, 2 below
 const CONTAINER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-const { width } = Dimensions.get('window');
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',

@@ -1,6 +1,6 @@
 import { font } from "@/utils/constant";
 import { router } from "expo-router";
-import { Bell, Settings2, SunDim, Wallet2 } from "lucide-react-native";
+import { AreaChartIcon, Bell, Settings2, SunDim, Wallet2 } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,13 +14,16 @@ export default function Header() {
                 <Text style={styles.logoText}>KHOROCH</Text>
             </Pressable>
             <View style={styles.actionsContainer}>
-                <Pressable onPress={() => { }}>
+                <Pressable onPress={() => { }} style={styles.headerButton}>
+                    <AreaChartIcon size={20} strokeWidth={1} color={"#000"} />
+                </Pressable>
+                <Pressable onPress={() => { }} style={styles.headerButton}>
                     <SunDim size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
-                <Pressable onPress={() => { }}>
+                <Pressable onPress={() => { }} style={styles.headerButton}>
                     <Bell size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
-                <Pressable onPress={() => { router.push("/settings") }}>
+                <Pressable onPress={() => { router.push("/settings") }} style={styles.headerButton}>
                     <Settings2 size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
             </View>
@@ -31,7 +34,7 @@ export default function Header() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: "#fff",
-        padding: 16,
+        padding: 12,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
@@ -51,6 +54,9 @@ const styles = StyleSheet.create({
     actionsContainer: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 16
+        gap: 8
+    },
+    headerButton: {
+        padding: 6
     }
 });

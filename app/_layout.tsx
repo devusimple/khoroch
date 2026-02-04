@@ -1,15 +1,16 @@
-import { router, Stack } from "expo-router";
-import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SQLiteProvider } from 'expo-sqlite';
-import { migrateDbIfNeeded } from '@/utils/db/client';
-import * as SplashScreen from 'expo-splash-screen';
-import { useFonts } from "expo-font"
-import { Suspense, useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Pressable, StatusBar, Text } from "react-native";
-import { font } from "@/utils/constant";
-import { ChevronLeft, Info, MoreVertical } from "lucide-react-native";
 import SuspenseFallback from "@/components/suspense";
+import { font } from "@/utils/constant";
+import { migrateDbIfNeeded } from '@/utils/db/client';
+import { useFonts } from "expo-font";
+import { router, Stack } from "expo-router";
+import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
+import { StatusBar } from "expo-status-bar";
+import { ChevronLeft } from "lucide-react-native";
+import { Suspense, useEffect } from "react";
+import { Pressable } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,7 +28,7 @@ export default function RootLayout() {
     if (!loaded) return null;
     return (
         <GestureHandlerRootView>
-            <StatusBar barStyle={'dark-content'} />
+            <StatusBar style="auto" />
             <KeyboardProvider>
                 <Suspense fallback={<SuspenseFallback />}>
                     <SQLiteProvider
@@ -45,13 +46,13 @@ export default function RootLayout() {
                                         <ChevronLeft strokeWidth={1} />
                                     </Pressable>
                                 },
-                                headerRight(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <Info strokeWidth={1} size={22} />
-                                    </Pressable>
-                                },
+                                // headerRight(props) {
+                                //     return <Pressable onPress={() => {
+                                //         router.back()
+                                //     }}>
+                                //         <Info strokeWidth={1} size={22} />
+                                //     </Pressable>
+                                // },
                             }} />
                             <Stack.Screen name="transaction/update" options={{
                                 title: "Update Transaction", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
@@ -59,13 +60,6 @@ export default function RootLayout() {
                                         router.back()
                                     }}>
                                         <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                                headerRight(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <MoreVertical strokeWidth={1} size={22} />
                                     </Pressable>
                                 },
                             }} />
@@ -77,13 +71,6 @@ export default function RootLayout() {
                                         <ChevronLeft strokeWidth={1} />
                                     </Pressable>
                                 },
-                                headerRight(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <MoreVertical strokeWidth={1} size={22} />
-                                    </Pressable>
-                                },
                             }} />
                             <Stack.Screen name="wallet/index" options={{
                                 title: "Wallets", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
@@ -91,13 +78,6 @@ export default function RootLayout() {
                                         router.back()
                                     }}>
                                         <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                                headerRight(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <MoreVertical strokeWidth={1} size={22} />
                                     </Pressable>
                                 },
                             }} />
@@ -109,13 +89,6 @@ export default function RootLayout() {
                                         <ChevronLeft strokeWidth={1} />
                                     </Pressable>
                                 },
-                                headerRight(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <MoreVertical strokeWidth={1} size={22} />
-                                    </Pressable>
-                                },
                             }} />
                             <Stack.Screen name="transaction/[id]/index" options={{
                                 title: "Transaction", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
@@ -125,13 +98,15 @@ export default function RootLayout() {
                                         <ChevronLeft strokeWidth={1} />
                                     </Pressable>
                                 },
-                                headerRight(props) {
+                            }} />
+                            <Stack.Screen name="wallet/[id]/index" options={{
+                                title: "Wallet", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
                                     return <Pressable onPress={() => {
                                         router.back()
                                     }}>
-                                        <MoreVertical strokeWidth={1} size={22} />
+                                        <ChevronLeft strokeWidth={1} />
                                     </Pressable>
-                                },
+                                }
                             }} />
                         </Stack>
                     </SQLiteProvider>

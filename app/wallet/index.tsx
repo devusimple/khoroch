@@ -1,10 +1,11 @@
+import { Wallet } from "@/types";
 import { font } from "@/utils/constant";
 import { useWalletStore } from "@/utils/store/wallet.store";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Banknote, ChevronRight, CreditCard, Landmark, Plus, TrendingUp, Wallet as WalletIcon } from "lucide-react-native";
+import { Banknote, ChevronRight, CreditCard, Landmark, Megaphone, Plus, TrendingUp, Wallet as WalletIcon } from "lucide-react-native";
 import { useEffect, useMemo } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 
 export default function WalletIndex() {
@@ -16,23 +17,27 @@ export default function WalletIndex() {
     }, [db]);
 
     const totalBalance = useMemo(() => {
-        return wallets.reduce((acc, wallet) => acc + (wallet.current_amount || 0), 0);
+        return wallets.reduce((acc, wallet) => acc + (wallet.id || 0), 0);
     }, [wallets]);
 
-    const renderWalletItem = ({ item }: { item: any }) => {
-        const Icon = getWalletIcon(item.type);
+    const renderWalletItem = ({ item }: { item: Wallet }) => {
         return (
-            <Pressable style={styles.walletCard} onPress={() => {/* Navigate to details if needed */ }}>
+            <Pressable style={styles.walletCard} onPress={() => { router.push({ pathname: "/wallet/[id]", params: { id: item.id } }) }}>
                 <View style={styles.walletIconContainer}>
-                    <Icon size={24} color="#333" strokeWidth={1.5} />
+                    {item.avatar
+                        ?
+                        <Image source={{ uri: item.avatar! }} style={{ width: 32, height: 32, borderRadius: 14 }} />
+                        :
+                        <Megaphone size={24} color="#333" strokeWidth={1.5} />
+                    }
                 </View>
                 <View style={styles.walletInfo}>
                     <Text style={styles.walletName}>{item.name}</Text>
-                    <Text style={styles.walletType}>{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</Text>
+                    <Text style={styles.walletType}>{new Date(item.created_at).toLocaleString("en", { month: "long", day: "2-digit", year: 'numeric', hour12: true, hour: 'numeric', minute: 'numeric' })}</Text>
                 </View>
                 <View style={styles.balanceInfo}>
-                    <Text style={[styles.walletBalance, { color: item.current_amount >= 0 ? "#00C853" : "#FF4B4B" }]}>
-                        ৳{item.current_amount.toLocaleString()}
+                    <Text style={[styles.walletBalance, { color: item.id >= 0 ? "#00C853" : "#FF4B4B" }]}>
+                        ৳{item.id}
                     </Text>
                     <ChevronRight size={18} color="#CCC" />
                 </View>
@@ -56,7 +61,7 @@ export default function WalletIndex() {
             {/* Wallet List Section */}
             <View style={styles.listContainer}>
                 <View style={styles.listHeader}>
-                    <Text style={styles.listTitle}>Your Accounts</Text>
+                    <Text style={styles.listTitle}>Your Wallets</Text>
                     <Text style={styles.listSubtitle}>{wallets.length} active wallets</Text>
                 </View>
 

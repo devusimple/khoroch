@@ -19,9 +19,9 @@ export const useBalanceStore = create<Balance>()((set) => {
             balance: 0,
         },
         getSummary: async (db) => {
-            const { date: monthDate } = useMonthYearStore.getState()
-            const unixDate = monthDate.getTime() / 1000
-            const nextMonthUnixDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getTime() / 1000
+            const { date } = useMonthYearStore.getState()
+            const unixStartDate = new Date(date.getFullYear(), date.getMonth(), 1).getTime() / 1000;
+            const unixEndDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime() / 1000;
 
             const result = await db.getAllAsync<{ income: number, expense: number }>(`
                 SELECT 
@@ -29,11 +29,11 @@ export const useBalanceStore = create<Balance>()((set) => {
                     SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
                 FROM transactions
                 WHERE date >= ? AND date < ?
-            `, [unixDate, nextMonthUnixDate])
+            `, unixStartDate, unixEndDate)
             set({
                 summary: {
-                    income: result[0].income,
-                    expense: result[0].expense,
+                    income: result[0].income ?? 0,
+                    expense: result[0].expense ?? 0,
                     balance: result[0].income - result[0].expense,
                 }
             })

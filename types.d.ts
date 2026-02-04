@@ -15,8 +15,7 @@ export interface Transaction {
 export interface Wallet {
     id: number
     name: string
-    initial_amount: number
-    current_amount: number
+    avatar?: string
     created_at: number
     updated_at: number
 }

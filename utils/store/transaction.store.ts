@@ -88,7 +88,7 @@ export const useTransactionStore = create<TransactionStore>()((set) => ({
         set((state) => ({
             transactions: [transaction!, ...state.transactions],
         }))
-        getSummary(db)
+        await getSummary(db)
     },
     updateTransaction: async ({ id, amount, note, type, wallet_id, date, attachment, db }) => {
         const { getSummary } = useBalanceStore.getState()

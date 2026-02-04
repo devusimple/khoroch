@@ -1,20 +1,21 @@
+import DateTimePicker from "@/components/date-time-picker";
+import DefaultWalletSelector from "@/components/default-wallet";
 import { font } from "@/utils/constant";
+import { useTransactionStore } from "@/utils/store/transaction.store";
+import { useWalletStore } from "@/utils/store/wallet.store";
+import * as Print from 'expo-print';
+import { router } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { Calendar, ChevronDown, FileText } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
+    Alert,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     View,
-    Alert,
-    ScrollView,
 } from "react-native";
-import { Calendar, ChevronDown, FileText } from "lucide-react-native";
-import DateTimePicker from "@/components/date-time-picker";
-import * as Print from 'expo-print';
-import { useSQLiteContext } from "expo-sqlite";
-import { useTransactionStore } from "@/utils/store/transaction.store";
-import { router } from "expo-router";
-import { useWalletStore } from "@/utils/store/wallet.store";
 
 export default function Settings() {
     const db = useSQLiteContext();
@@ -22,7 +23,7 @@ export default function Settings() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const { getTransactions, transactions } = useTransactionStore();
-    const { wallets } = useWalletStore();
+    const { wallets, getWallets } = useWalletStore();
 
     const handleExport = async () => {
         setIsExporting(true);
@@ -45,7 +46,7 @@ export default function Settings() {
 
     const createHTML = (selectedDate: Date) => {
         const monthYear = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
+        getWallets(db);
         const rows = transactions.map(t => `
             <tr>
                 <td>${new Date(t.date * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
@@ -158,20 +159,22 @@ export default function Settings() {
                         Add your wallet details to get started.
                     </Text>
 
-                    <Pressable style={styles.exportButton} onPress={() => router.navigate('/wallet/create')}>
+                    <Pressable style={[styles.exportButton]} onPress={() => router.navigate('/wallet/create')}>
                         <FileText size={20} color="#fff" style={{ marginRight: 8 }} />
                         <Text style={styles.exportButtonText}>
                             Add Wallet
                         </Text>
                     </Pressable>
-                    <Pressable style={styles.exportButton} onPress={() => router.navigate('/wallet/')}>
-                        <FileText size={20} color="#fff" style={{ marginRight: 8 }} />
-                        <Text style={styles.exportButtonText}>
+                    <Pressable style={styles.buttonOutline} onPress={() => router.navigate('/wallet')}>
+                        <FileText size={20} color="#000" style={{ marginRight: 8 }} />
+                        <Text style={styles.buttonOutlineText}>
                             Show All Wallets
                         </Text>
                     </Pressable>
+                    <DefaultWalletSelector />
                 </View>
             </View>
+
         </ScrollView>
     );
 }
@@ -249,6 +252,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 10,
         paddingVertical: 14,
+        borderWidth: 1
+    },
+    buttonOutlineText: {
+        color: "#000"
     },
     amountContainer: {
         flexDirection: "row",

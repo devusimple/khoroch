@@ -12,12 +12,7 @@ PRAGMA optimize;
 CREATE TABLE IF NOT EXISTS wallets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    type TEXT DEFAULT 'cash', -- cash, bank, credit, etc.
-    initial_amount REAL NOT NULL DEFAULT 0,
-    current_amount REAL NOT NULL DEFAULT 0,
-    icon TEXT,                 -- emoji or icon name
-    color TEXT DEFAULT '#000000',
-    is_active INTEGER DEFAULT 1,
+    avatar TEXT
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );

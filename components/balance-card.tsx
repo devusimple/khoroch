@@ -7,8 +7,9 @@ import { useBalanceStore } from "@/utils/store/balance.store";
 import { useSQLiteContext } from "expo-sqlite";
 
 export default function BalanceCard() {
-    const { date, setDate } = useMonthYearStore();
     const db = useSQLiteContext();
+    const { date, setDate } = useMonthYearStore();
+    const { getSummary, summary } = useBalanceStore()
 
     const handleMonthChange = (direction: "prev" | "next") => {
         if (direction === "prev") {
@@ -17,20 +18,21 @@ export default function BalanceCard() {
             setDate(new Date(date.getFullYear(), date.getMonth() + 1));
         }
     };
-    const { getSummary, summary } = useBalanceStore()
 
     useEffect(() => {
         getSummary(db)
-    }, [date, db])
+    }, [date, db]);
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Pressable style={styles.headerButton} onPress={() => handleMonthChange("prev")}>
+                <Pressable style={styles.headerButton} aria-label="Previous" onPress={() => handleMonthChange("prev")}>
                     <ChevronLeft strokeWidth={1} />
                 </Pressable>
                 <Text style={styles.headerText}>{date.toLocaleString("default", { month: "long", year: "numeric" })}</Text>
-                <Pressable style={styles.headerButton} disabled={date.getMonth() === new Date().getMonth()} onPress={() => handleMonthChange("next")}>
+                <Pressable style={[styles.headerButton, {
+                    opacity: date.getMonth() === new Date().getMonth() ? 0.3 : 1
+                }]} disabled={date.getMonth() === new Date().getMonth()} onPress={() => handleMonthChange("next")} aria-label="Next">
                     <ChevronRight strokeWidth={1} />
                 </Pressable>
             </View>
