@@ -1,48 +1,91 @@
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { Dropdown, DropdownItem } from "@/components/dropdown";
 import { font } from "@/utils/constant";
 import { useWalletStore } from "@/utils/store/wallet.store";
 import * as ImagePicker from 'expo-image-picker';
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Paperclip, X } from "lucide-react-native";
-import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import {
+    Banknote,
+    CreditCard,
+    Image as ImageIcon,
+    Landmark,
+    X
+} from "lucide-react-native";
+import { useMemo, useState } from "react";
+import {
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    ToastAndroid,
+    View,
+    Platform,
+    Alert
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
 
 export default function CreateWallet() {
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
+    const walletTypes: DropdownItem<string>[] = useMemo(() => [
+        { label: 'Cash', value: 'Cash', icon: <Banknote size={20} color={activeColors.purple} /> },
+        { label: 'Bank Account', value: 'Bank', icon: <Landmark size={20} color={activeColors.blue} /> },
+        { label: 'Credit Card', value: 'Credit', icon: <CreditCard size={20} color={activeColors.orange} /> },
+    ], [activeColors]);
+
     const [name, setName] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [type, setType] = useState("Cash");
+    const [initialBalance, setInitialBalance] = useState("0");
     const [avatar, setAvatar] = useState<string | null>(null);
-    const db = useSQLiteContext()
-    const { addWallet } = useWalletStore()
+    const [loading, setLoading] = useState(false);
+
+    const db = useSQLiteContext();
+    const { addWallet } = useWalletStore();
+
+    const showToast = (message: string) => {
+        if (Platform.OS === 'android') {
+            ToastAndroid.show(message, ToastAndroid.SHORT);
+        } else {
+            Alert.alert(message);
+        }
+    };
 
     const handleCreate = async () => {
-        setLoading(true);
-        if (!name) {
-            ToastAndroid.show("Please fill all the fields", ToastAndroid.SHORT);
+        if (!name.trim()) {
+            showToast("Please provide a wallet name");
             return;
         }
+
+        setLoading(true);
         try {
-            await addWallet({ name, avatar: avatar ?? undefined, db })
-            ToastAndroid.show("Wallet created successfully", ToastAndroid.SHORT);
+            await addWallet({
+                name: name.trim(),
+                avatar: avatar ?? undefined,
+                type,
+                initial_amount: parseFloat(initialBalance) || 0,
+                db
+            });
+            showToast("Wallet created successfully");
             router.back();
         } catch (error) {
-            console.log(error)
-            ToastAndroid.show("Somthing went wrong!", ToastAndroid.SHORT)
+            console.log(error);
+            showToast("Something went wrong!");
         } finally {
             setLoading(false);
-            setName("")
-            setAvatar(null);
         }
-
     };
 
     const pickImage = async () => {
-        // No permissions request is necessary for launching the image library
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
+            aspect: [1, 1],
             quality: 1,
         });
 
@@ -52,121 +95,212 @@ export default function CreateWallet() {
     };
 
     return (
-        <KeyboardAwareScrollView
-            style={styles.container}
-            contentContainerStyle={styles.content}
-            bottomOffset={20}
-        >
-            <View style={styles.form}>
-                <Input
-                    label="Wallet Name"
-                    placeholder="e.g. Personal Savings"
-                    value={name}
-                    onChangeText={setName}
-                />
-                {/* Attachment Picker */}
-                <View style={styles.inputRow}>
-                    <View style={styles.iconContainer}>
-                        <Paperclip size={20} color="#555" />
-                    </View>
-                    <View style={styles.inputContent}>
-                        <Text style={styles.label}>Wallet Avatar (Optional)</Text>
+        <View style={styles.container}>
+            <KeyboardAwareScrollView
+                contentContainerStyle={styles.scrollContent}
+                bottomOffset={40}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Visuals Selection (Avatar) */}
+                <View style={styles.avatarSection}>
+                    <Pressable onPress={pickImage} style={styles.avatarPicker}>
                         {avatar ? (
-                            <View style={styles.attachmentPreview}>
-                                <Pressable onPress={() => setAvatar(null)} style={styles.removeAttachment}>
-                                    <X size={14} color="#fff" />
+                            <View style={styles.avatarWrapper}>
+                                <Image source={{ uri: avatar }} style={styles.avatarImage} />
+                                <Pressable
+                                    style={styles.removeAvatar}
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        setAvatar(null);
+                                    }}
+                                >
+                                    <X size={16} color="#fff" />
                                 </Pressable>
-                                <Image source={{ uri: avatar }} style={styles.attachmentImage} />
                             </View>
                         ) : (
-                            <Pressable onPress={pickImage}>
-                                <Text style={[styles.valueText, { color: "#007AFF" }]}>Open Gallery</Text>
-                            </Pressable>
+                            <View style={styles.avatarPlaceholder}>
+                                <ImageIcon size={32} color={activeColors.blue} />
+                                <Text style={styles.avatarPlaceholderText}>Add Photo</Text>
+                            </View>
                         )}
+                    </Pressable>
+                </View>
+
+                {/* Identity Group */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Identity</Text>
+                    <View style={styles.card}>
+                        <Input
+                            label="Wallet Name"
+                            placeholder="e.g. Salary Account"
+                            value={name}
+                            onChangeText={setName}
+                            style={styles.input}
+                        />
+                        <View style={{ marginTop: 16 }}>
+                            <Dropdown
+                                label="Wallet Type"
+                                data={walletTypes}
+                                value={type}
+                                onChange={setType}
+                                style={styles.input}
+                            />
+                        </View>
                     </View>
                 </View>
-            </View>
 
+                {/* Financial Status Group */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Financial Status</Text>
+                    <View style={styles.card}>
+                        <Input
+                            label="Initial Balance (৳)"
+                            placeholder="0.00"
+                            value={initialBalance}
+                            onChangeText={setInitialBalance}
+                            keyboardType="numeric"
+                            style={styles.input}
+                        />
+                        <Text style={styles.helperText}>
+                            This is the starting amount in your wallet.
+                        </Text>
+                    </View>
+                </View>
+
+                <View style={styles.spacer} />
+            </KeyboardAwareScrollView>
+
+            {/* Fixed Footer Button */}
             <View style={styles.footer}>
                 <Button
                     onPress={handleCreate}
                     loading={loading}
-                    disabled={!name}
+                    disabled={!name.trim()}
+                    style={styles.createButton}
                 >
-                    Create Wallet
+                    <Text style={styles.createButtonText}>
+                        Create Wallet
+                    </Text>
                 </Button>
             </View>
-        </KeyboardAwareScrollView>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
     },
-    content: {
-        flexGrow: 1,
-        padding: 20,
+    scrollContent: {
+        paddingTop: 20,
+        paddingHorizontal: 20,
+        paddingBottom: 100,
     },
-    form: {
-        gap: 20,
-        flex: 1,
-    },
-    footer: {
-        marginTop: 20,
-        marginBottom: 20,
-    },
-    inputRow: {
-        flexDirection: "row",
+    avatarSection: {
         alignItems: "center",
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: "#f0f0f0",
+        marginBottom: 24,
     },
-    iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: "#f5f5f5",
-        alignItems: "center",
-        justifyContent: "center",
-        marginRight: 12,
-    },
-    inputContent: {
-        flex: 1,
-    },
-    label: {
-        fontSize: 12,
-        color: "#888",
-        fontFamily: font.HindSiliguri,
-        marginBottom: 2,
-    },
-    valueText: {
-        fontSize: 16,
-        color: "#333",
-        fontFamily: font.HindSiliguri,
-        fontWeight: "500",
-    },
-    attachmentPreview: {
-        marginTop: 8,
+    avatarPicker: {
         width: 100,
         height: 100,
-        borderRadius: 8,
-        overflow: 'hidden',
-        position: 'relative',
+        borderRadius: 24,
+        backgroundColor: activeColors.card,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: activeColors.border,
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
-    attachmentImage: {
-        width: '100%',
-        height: '100%',
+    avatarWrapper: {
+        width: "100%",
+        height: "100%",
+        borderRadius: 24,
+        overflow: "hidden",
     },
-    removeAttachment: {
-        position: 'absolute',
-        top: 4,
-        right: 4,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 10,
+    avatarImage: {
+        width: "100%",
+        height: "100%",
+    },
+    removeAvatar: {
+        position: "absolute",
+        top: 6,
+        right: 6,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        borderRadius: 12,
         padding: 4,
-        zIndex: 1,
+    },
+    avatarPlaceholder: {
+        alignItems: "center",
+    },
+    avatarPlaceholderText: {
+        fontSize: 12,
+        color: activeColors.blue,
+        fontWeight: "600",
+        marginTop: 4,
+        fontFamily: font.HindSiliguri,
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: activeColors.textMuted,
+        textTransform: "uppercase",
+        marginBottom: 8,
+        marginLeft: 4,
+        letterSpacing: 0.5,
+    },
+    card: {
+        backgroundColor: activeColors.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: activeColors.border,
+    },
+    helperText: {
+        fontSize: 13,
+        color: activeColors.textMuted,
+        marginTop: 10,
+        fontFamily: font.HindSiliguri,
+        lineHeight: 18,
+    },
+    spacer: {
+        height: 40,
+    },
+    input: {
+        fontFamily: font.HindSiliguri,
+        borderWidth: 1,
+        borderColor: activeColors.border,
+        borderRadius: 12,
+        padding: 12,
+        backgroundColor: activeColors.background,
+    },
+    footer: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 20,
+        backgroundColor: isDark ? 'rgba(28, 28, 30, 0.9)' : "rgba(242, 242, 247, 0.9)",
+        borderTopWidth: 1,
+        borderTopColor: activeColors.border,
+    },
+    createButton: {
+        borderRadius: 16,
+        height: 56,
+        backgroundColor: activeColors.indigo,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    createButtonText: {
+        color: activeColors.foreground,
+        fontSize: 16,
+        fontWeight: "600",
+        fontFamily: font.HindSiliguri,
     },
 });

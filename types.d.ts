@@ -1,3 +1,14 @@
+export interface Category {
+    id: number
+    name: string
+    type: "income" | "expense"
+    icon?: string
+    color?: string
+    is_active: number
+    created_at: number
+    updated_at: number
+}
+
 export interface Transaction {
     id: number
     type: "income" | "expense" | "transfer"
@@ -16,6 +27,11 @@ export interface Wallet {
     id: number
     name: string
     avatar?: string
+    type: string
+    icon?: string
+    initial_amount: number
+    current_amount: number
+    is_active: number
     created_at: number
     updated_at: number
 }

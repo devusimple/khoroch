@@ -4,178 +4,306 @@ import { font } from "@/utils/constant";
 import { useWalletStore } from "@/utils/store/wallet.store";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Trash2, TrendingUpIcon } from "lucide-react-native";
+import {
+    ArrowDownLeft,
+    ArrowUpRight,
+    Edit2,
+    Trash2,
+    WalletIcon,
+} from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import {
+    Alert,
+    FlatList,
+    Pressable,
+    StyleSheet,
+    Text,
+    ToastAndroid,
+    View,
+    Platform
+} from "react-native";
+import { Colors } from "@/theme/colors";
+import { useModeToggle } from "@/hooks/useModeToggler";
 
 export default function WalletDetails() {
-    const { id } = useLocalSearchParams()
+    const { id } = useLocalSearchParams();
     const db = useSQLiteContext();
-    const [transactions, setTransactions] = useState<Transaction[]>([])
-    const { getWalletById } = useWalletStore()
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const { getWalletById } = useWalletStore();
     const [wallet, setWallet] = useState<Wallet | null>(null);
 
     const getWalletTransactions = async () => {
         const res = await db.getAllAsync<Transaction>(`
-                SELECT * FROM transactions
-                    WHERE wallet_id = ?
-            `, id.toString())
-
-        setTransactions([...transactions, ...res]);
+            SELECT * FROM transactions
+            WHERE wallet_id = ?
+            ORDER BY date DESC
+        `, id.toString());
+        setTransactions(res);
     };
 
-    const totalIncomes = useMemo(() => {
-        const incomes = transactions.filter((t) => t.type === "income")
-        return incomes.reduce((acc, transaction) => acc + (transaction.amount || 0), 0);
-    }, [transactions]);
-
-    const totalExpense = useMemo(() => {
-        const incomes = transactions.filter((t) => t.type === "expense")
-        return incomes.reduce((acc, transaction) => acc + (transaction.amount || 0), 0);
+    const totals = useMemo(() => {
+        return transactions.reduce((acc, t) => {
+            if (t.type === "income") acc.income += t.amount;
+            if (t.type === "expense") acc.expense += t.amount;
+            return acc;
+        }, { income: 0, expense: 0 });
     }, [transactions]);
 
     useEffect(() => {
         getWalletTransactions();
         (async () => {
-            const res = await getWalletById({ id: parseInt(id.toString()), db })
+            const res = await getWalletById({ id: parseInt(id.toString()), db });
             setWallet(res);
-        })()
-    }, [id])
+        })();
+    }, [id]);
+
+    const handleDelete = () => {
+        Alert.alert(
+            "Delete Wallet",
+            "This will permanently remove the wallet and all its transaction history. This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await db.runAsync(`DELETE FROM wallets WHERE id = ?`, id.toString());
+                            await db.runAsync(`DELETE FROM transactions WHERE wallet_id = ?`, id.toString());
+                            if (Platform.OS === 'android') {
+                                ToastAndroid.show('Wallet deleted successfully', ToastAndroid.SHORT);
+                            }
+                            router.replace('/wallet');
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <View style={styles.container}>
-            {/* Summary Header */}
-            <View style={styles.header}>
-                <View style={[styles.summaryCard, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-                    <View style={{}}>
-                        <View style={styles.summaryIconText}>
-                            <TrendingUpIcon size={24} color="rgba(255,255,255,0.8)" />
-                            <Text style={styles.summaryLabel}>Total Net Worth</Text>
-                        </View>
-                        <Text style={styles.totalAmount}>৳{(totalIncomes - totalExpense).toString()}</Text>
+            {/* Dashboard Area */}
+            <View style={styles.dashboard}>
+                <View style={styles.walletHeader}>
+                    <View style={styles.walletHeaderLeft}>
+                        <Text style={styles.walletTypeLabel}>{wallet?.type || 'Account'}</Text>
+                        <Text style={styles.walletName}>{wallet?.name}</Text>
                     </View>
-                    <View style={{ justifyContent: 'space-between' }}>
-                        <View style={{ backgroundColor: "#db0000ff", padding: 6, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: "#fff" }}>Expense: ৳{(totalExpense).toString()}</Text>
-                        </View>
-                        <View style={{ backgroundColor: "#00990dff", padding: 6, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: '#fff' }}>Income: ৳{(totalIncomes).toString()}</Text>
-                        </View>
+                    <View style={styles.actionGroup}>
+                        <Pressable
+                            style={styles.iconBtn}
+                            onPress={() => router.push({ pathname: '/wallet/update', params: { id } })}
+                        >
+                            <Edit2 size={20} color={activeColors.blue} />
+                        </Pressable>
+                        <Pressable style={[styles.iconBtn, { marginLeft: 12 }]} onPress={handleDelete}>
+                            <Trash2 size={20} color={activeColors.red} />
+                        </Pressable>
                     </View>
                 </View>
 
+                <View style={styles.netWorthCard}>
+                    <Text style={styles.netWorthLabel}>Current Balance</Text>
+                    <Text style={styles.netWorthAmount}>৳ {wallet?.current_amount.toLocaleString()}</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                    <View style={styles.summaryMiniCard}>
+                        <ArrowDownLeft size={16} color={activeColors.green} />
+                        <View style={styles.summaryMiniText}>
+                            <Text style={styles.miniLabel}>Total In</Text>
+                            <Text style={[styles.miniValue, { color: activeColors.green }]}>৳ {totals.income.toLocaleString()}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.summaryMiniCard}>
+                        <ArrowUpRight size={16} color={activeColors.red} />
+                        <View style={styles.summaryMiniText}>
+                            <Text style={styles.miniLabel}>Total Out</Text>
+                            <Text style={[styles.miniValue, { color: activeColors.red }]}>৳ {totals.expense.toLocaleString()}</Text>
+                        </View>
+                    </View>
+                </View>
             </View>
 
+            {/* List Container */}
             <View style={styles.listContainer}>
                 <View style={styles.listHeader}>
-                    <View>
-                        <Text style={styles.listTitle}>{wallet?.name}</Text>
-                        <Text style={styles.listSubtitle}>Total {transactions.length} transactions make this wallet</Text>
-                    </View>
-                    <Pressable style={{ padding: 6 }} onPress={() => {
-                        Alert.alert("Are you sure?", "This action will permanently delete the wallet and  wallet transactions", [
-                            {
-                                text: "Continue", isPreferred: false, style: "destructive", onPress: async () => {
-                                    const ress = await db.runAsync(`DELETE FROM wallets WHERE id = ?`, wallet?.id!);
-                                    if (ress.changes > 0) {
-                                        ToastAndroid.show('Wallet deleted!', ToastAndroid.SHORT)
-                                    }
-                                    // for (let index = 0; index < transactions.length; index++) {
-                                    const res = await db.runAsync(`DELETE FROM transactions WHERE wallet_id = ? `, wallet?.id!);
-                                    if (res.changes > 0) {
-                                        ToastAndroid.show('Transactions deleted!', ToastAndroid.SHORT)
-                                    }
-                                    router.navigate("/")
-
-                                    // }
-
-                                }
-                            },
-                            { text: "Cancel", isPreferred: true, style: 'cancel' }
-                        ], { cancelable: true })
-                    }}>
-                        <Trash2 color={"#f13434ff"} size={18} />
-                    </Pressable>
+                    <Text style={styles.listTitle}>Recent Activity</Text>
+                    <Text style={styles.listSubtitle}>{transactions.length} entries</Text>
                 </View>
+
                 <FlatList
                     showsVerticalScrollIndicator={false}
                     data={transactions}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => <TransactionCard item={item} />}
+                    contentContainerStyle={styles.listContent}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
                     ListEmptyComponent={
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
-                            <Text>No transaction to the wallet</Text>
-                        </View>}
+                        <View style={styles.emptyContainer}>
+                            <WalletIcon size={48} color={activeColors.textMuted} />
+                            <Text style={styles.emptyText}>No activity recorded for this wallet</Text>
+                        </View>
+                    }
                 />
             </View>
         </View>
-    )
-
+    );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F8F9FA",
+        backgroundColor: activeColors.background,
     },
-    header: {
+    dashboard: {
         paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 20,
+        paddingBottom: 24,
+        backgroundColor: activeColors.background,
     },
-    summaryCard: {
-        backgroundColor: "#2D3436", // Sleek dark aesthetic
+    actionGroup: {
+        flexDirection: "row",
+    },
+    iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: activeColors.card,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: activeColors.border,
+    },
+    walletHeader: {
+        marginBottom: 20,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    walletHeaderLeft: {
+        flexDirection: "column",
+    },
+    walletTypeLabel: {
+        fontSize: 12,
+        fontWeight: "bold",
+        color: activeColors.blue,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    walletName: {
+        fontSize: 28,
+        fontWeight: "bold",
+        color: activeColors.text,
+        fontFamily: font.HindSiliguri,
+    },
+    netWorthCard: {
+        backgroundColor: isDark ? activeColors.card : "#1C1C1E",
         borderRadius: 24,
         padding: 24,
+        marginBottom: 16,
         elevation: 8,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
+        borderWidth: isDark ? 1 : 0,
+        borderColor: activeColors.border,
     },
-    summaryIconText: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
+    netWorthLabel: {
+        fontSize: 14,
+        color: isDark ? activeColors.textMuted : "#8E8E93",
+        fontWeight: "600",
+        letterSpacing: 0.5,
+        textTransform: "uppercase",
         marginBottom: 8,
     },
-    summaryLabel: {
-        color: "rgba(255,255,255,0.7)",
-        fontSize: 14,
-        fontFamily: font.HindSiliguri,
-        letterSpacing: 0.5,
-    },
-    totalAmount: {
-        color: "#fff",
-        fontSize: 32,
+    netWorthAmount: {
+        fontSize: 34,
+        color: "#FFFFFF",
         fontWeight: "bold",
+        fontFamily: font.HindSiliguri,
+    },
+    summaryRow: {
+        flexDirection: "row",
+        gap: 12,
+    },
+    summaryMiniCard: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: activeColors.card,
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: activeColors.border,
+    },
+    summaryMiniText: {
+        marginLeft: 10,
+    },
+    miniLabel: {
+        fontSize: 10,
+        color: activeColors.textMuted,
+        fontWeight: "bold",
+        textTransform: "uppercase",
+    },
+    miniValue: {
+        fontSize: 14,
+        fontWeight: "700",
         fontFamily: font.HindSiliguri,
     },
     listContainer: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: isDark ? activeColors.background : activeColors.card,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         paddingTop: 24,
-        elevation: 4,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        paddingHorizontal: 20,
+        borderTopWidth: isDark ? 1 : 0,
+        borderColor: activeColors.border,
     },
     listHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
         marginBottom: 20,
-        paddingHorizontal: 20,
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
+        paddingHorizontal: 4,
     },
     listTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: "bold",
-        color: "#2D3436",
+        color: activeColors.text,
         fontFamily: font.HindSiliguri,
     },
     listSubtitle: {
-        fontSize: 14,
-        color: "#999",
+        fontSize: 13,
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
+        marginBottom: 2,
     },
-})
+    listContent: {
+        paddingBottom: 40,
+    },
+    separator: {
+        height: 12,
+    },
+    emptyContainer: {
+        paddingTop: 60,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    emptyText: {
+        marginTop: 12,
+        fontSize: 16,
+        color: activeColors.textMuted,
+        fontFamily: font.HindSiliguri,
+        textAlign: "center",
+    },
+});

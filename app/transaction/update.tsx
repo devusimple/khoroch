@@ -10,9 +10,9 @@ import {
     Calendar,
     ChevronDown,
     Paperclip,
-    X
+    X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
     Image,
     Platform,
@@ -21,18 +21,25 @@ import {
     Text,
     TextInput,
     ToastAndroid,
-    View
+    View,
+    Alert
 } from "react-native";
 import {
     KeyboardAvoidingView,
     KeyboardAwareScrollView,
 } from "react-native-keyboard-controller";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
 
 type TransactionType = "Income" | "Expense" | "Transfer";
 
 export default function UpdateTransaction() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const db = useSQLiteContext();
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
 
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
@@ -44,9 +51,6 @@ export default function UpdateTransaction() {
     const { updateTransaction } = useTransactionStore();
 
     const [wallets, setWallets] = useState<DropdownItem<string>[]>([])
-
-
-    const db = useSQLiteContext();
 
     const getWallets = useCallback(async () => {
         try {
@@ -63,26 +67,22 @@ export default function UpdateTransaction() {
 
     useEffect(() => {
         if (id) {
-            // In a real app, fetch transaction by ID here
-            console.log(`Fetching transaction ${id}...`);
-            // Mock data
-
             (async () => {
                 const [res] = await db.getAllAsync<Transaction>(`SELECT * FROM transactions where id = ?`, parseInt(id as string))
-                setAmount(res.amount.toString());
-                setNote(res.note ?? "");
-                setType(
-                    res.type === "income" ? "Income" : res.type === "expense" ? "Expense" : "Transfer"
-                );
-                setWallet(res.wallet_id.toString());
-                setDate(new Date(res.date));
-                setImage(res.attachment ?? null);
+                if (res) {
+                    setAmount(res.amount.toString());
+                    setNote(res.note ?? "");
+                    setType(
+                        res.type === "income" ? "Income" : res.type === "expense" ? "Expense" : "Transfer"
+                    );
+                    setWallet(res.wallet_id.toString());
+                    setDate(new Date(res.date * 1000));
+                    setImage(res.attachment ?? null);
+                }
             })()
-
-
         }
         getWallets();
-    }, [db, id]);
+    }, [db, id, getWallets]);
 
     const handleUpdate = () => {
         try {
@@ -96,11 +96,17 @@ export default function UpdateTransaction() {
                 attachment: image,
                 db
             });
-            ToastAndroid.show("Transaction updated successfully", ToastAndroid.SHORT);
+            if (Platform.OS === 'android') {
+                ToastAndroid.show("Transaction updated successfully", ToastAndroid.SHORT);
+            }
             router.back();
         } catch (error) {
             console.log(error);
-            ToastAndroid.show("Failed to update transaction", ToastAndroid.SHORT);
+            if (Platform.OS === 'android') {
+                ToastAndroid.show("Failed to update transaction", ToastAndroid.SHORT);
+            } else {
+                Alert.alert("Error", "Failed to update transaction");
+            }
         }
     };
 
@@ -117,12 +123,35 @@ export default function UpdateTransaction() {
         }
     };
 
+    const getTypeHighlight = (t: TransactionType) => {
+        if (type !== t) return {};
+
+        switch (t) {
+            case "Expense": return { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.2)' : "#ffebee" };
+            case "Income": return { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.2)' : "#e8f5e9" };
+            case "Transfer": return { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.2)' : "#e3f2fd" };
+            default: return {};
+        }
+    };
+
+    const getTypeTextHighlight = (t: TransactionType) => {
+        if (type !== t) return {};
+
+        switch (t) {
+            case "Expense": return { color: activeColors.red };
+            case "Income": return { color: activeColors.green };
+            case "Transfer": return { color: activeColors.blue };
+            default: return {};
+        }
+    };
+
     return (
         <View style={styles.container}>
             <KeyboardAwareScrollView
                 bottomOffset={62}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
                 {/* Type Selector */}
                 <View style={styles.typeSelectorContainer}>
@@ -132,19 +161,14 @@ export default function UpdateTransaction() {
                             onPress={() => setType(t)}
                             style={[
                                 styles.typeButton,
-                                type === t && styles.typeButtonActive,
-                                type === "Expense" && t === "Expense" && { backgroundColor: "#ffebee" },
-                                type === "Income" && t === "Income" && { backgroundColor: "#e8f5e9" },
-                                type === "Transfer" && t === "Transfer" && { backgroundColor: "#e3f2fd" },
+                                getTypeHighlight(t)
                             ]}
                         >
                             <Text
                                 style={[
                                     styles.typeText,
+                                    getTypeTextHighlight(t),
                                     type === t && styles.typeTextActive,
-                                    type === "Expense" && t === "Expense" && { color: "#d32f2f" },
-                                    type === "Income" && t === "Income" && { color: "#388e3c" },
-                                    type === "Transfer" && t === "Transfer" && { color: "#1976d2" },
                                 ]}
                             >
                                 {t}
@@ -162,13 +186,12 @@ export default function UpdateTransaction() {
                         placeholder="৳ 0.00"
                         keyboardType="numeric"
                         autoFocus
-                        placeholderTextColor="#bdbdbd"
+                        placeholderTextColor={activeColors.textMuted}
                     />
                 </View>
 
                 {/* Form Fields */}
-                <View style={[styles.formSection, { paddingVertical: 12 }]}>
-
+                <View style={styles.formSection}>
                     <Dropdown
                         label="Wallet"
                         placeholder="Select Wallet"
@@ -182,7 +205,7 @@ export default function UpdateTransaction() {
                     {/* Date Selector */}
                     <Pressable style={styles.inputRow} onPress={() => setShowDatePicker(true)}>
                         <View style={styles.iconContainer}>
-                            <Calendar size={20} color="#555" />
+                            <Calendar size={20} color={activeColors.textMuted} />
                         </View>
                         <View style={styles.inputContent}>
                             <Text style={styles.label}>Date</Text>
@@ -190,7 +213,7 @@ export default function UpdateTransaction() {
                                 {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                         </View>
-                        <ChevronDown size={20} color="#999" />
+                        <ChevronDown size={20} color={activeColors.border} />
                     </Pressable>
 
                     {/* Note Input */}
@@ -200,7 +223,7 @@ export default function UpdateTransaction() {
                             value={note}
                             onChangeText={setNote}
                             placeholder="Add a note..."
-                            placeholderTextColor="#999"
+                            placeholderTextColor={activeColors.textMuted}
                             multiline
                         />
                     </View>
@@ -208,7 +231,7 @@ export default function UpdateTransaction() {
                     {/* Attachment Picker */}
                     <View style={styles.inputRow}>
                         <View style={styles.iconContainer}>
-                            <Paperclip size={20} color="#555" />
+                            <Paperclip size={20} color={activeColors.textMuted} />
                         </View>
                         <View style={styles.inputContent}>
                             <Text style={styles.label}>Attachment (Optional)</Text>
@@ -221,7 +244,7 @@ export default function UpdateTransaction() {
                                 </View>
                             ) : (
                                 <Pressable onPress={pickImage}>
-                                    <Text style={[styles.valueText, { color: "#007AFF" }]}>Add Receipt</Text>
+                                    <Text style={[styles.valueText, { color: activeColors.blue }]}>Add Receipt</Text>
                                 </Pressable>
                             )}
                         </View>
@@ -239,7 +262,7 @@ export default function UpdateTransaction() {
                     <Text style={styles.submitButtonText}>Update Transaction</Text>
                 </Pressable>
             </KeyboardAvoidingView>
-            {/* Date Picker Modal */}
+
             <DateTimePicker
                 isVisible={showDatePicker}
                 onClose={() => setShowDatePicker(false)}
@@ -253,22 +276,22 @@ export default function UpdateTransaction() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#f9f9f9",
+        backgroundColor: activeColors.background,
     },
     scrollContent: {
         padding: 20,
     },
     typeSelectorContainer: {
         flexDirection: "row",
-        backgroundColor: "#fff",
+        backgroundColor: activeColors.card,
         borderRadius: 12,
         padding: 4,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: activeColors.border,
     },
     typeButton: {
         flex: 1,
@@ -276,13 +299,10 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderRadius: 8,
     },
-    typeButtonActive: {
-        // Background color handled dynamically
-    },
     typeText: {
         fontFamily: font.HindSiliguri,
         fontSize: 14,
-        color: "#666",
+        color: activeColors.textMuted,
         fontWeight: "500",
     },
     typeTextActive: {
@@ -293,39 +313,41 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         marginBottom: 32,
-        backgroundColor: "#fff",
+        backgroundColor: activeColors.card,
         borderRadius: 12,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: activeColors.border,
     },
     amountInput: {
         fontSize: 48,
         fontFamily: font.HindSiliguri,
-        color: "#333",
+        color: activeColors.text,
         fontWeight: "bold",
         minWidth: 100,
         textAlign: "center",
+        paddingVertical: 8,
     },
     formSection: {
-        backgroundColor: "#fff",
+        backgroundColor: activeColors.card,
         borderRadius: 16,
         paddingHorizontal: 16,
+        paddingVertical: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: activeColors.border,
     },
     inputRow: {
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#f0f0f0",
+        borderBottomColor: activeColors.background,
     },
     iconContainer: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: activeColors.background,
         alignItems: "center",
         justifyContent: "center",
         marginRight: 12,
@@ -335,13 +357,13 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 12,
-        color: "#888",
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
         marginBottom: 2,
     },
     valueText: {
         fontSize: 16,
-        color: "#333",
+        color: activeColors.text,
         fontFamily: font.HindSiliguri,
         fontWeight: "500",
     },
@@ -349,23 +371,23 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontFamily: font.HindSiliguri,
-        color: "#333",
+        color: activeColors.text,
         minHeight: 40,
     },
     footer: {
         padding: 16,
-        backgroundColor: "#fff",
+        backgroundColor: activeColors.card,
         borderTopWidth: 1,
-        borderTopColor: "#eee",
+        borderTopColor: activeColors.border,
     },
     submitButton: {
-        backgroundColor: "#000", // Update button color if needed, keep black for consistency for now
+        backgroundColor: activeColors.primary,
         borderRadius: 12,
         paddingVertical: 16,
         alignItems: "center",
     },
     submitButtonText: {
-        color: "#fff",
+        color: activeColors.primaryForeground,
         fontSize: 16,
         fontWeight: "600",
         fontFamily: font.HindSiliguri,

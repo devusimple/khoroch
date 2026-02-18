@@ -44,21 +44,36 @@ export const useTransactionStore = create<TransactionStore>()((set) => ({
         const unixStartDate = new Date(date.getFullYear(), date.getMonth(), 1).getTime() / 1000;
         const unixEndDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime() / 1000;
 
-        const result = await db.getAllAsync<Transaction>(`
+        let query = `
             SELECT * FROM transactions
             WHERE date >= ? AND date < ?
-            ${wallet_id ? `AND wallet_id = ${wallet_id}` : ''}
-            ${category_id ? `AND category_id = ${category_id}` : ''}
-            ${type ? type === 'all' ? '' : `AND type = '${type}'` : ''}
-            ${search ? `AND note LIKE '%${search}%'` : ''}
-            ORDER BY date DESC
-            LIMIT ? OFFSET ?
-        `,
-            unixStartDate,
-            unixEndDate,
-            limit,
-            (page - 1) * limit
-        )
+        `;
+        const params: any[] = [unixStartDate, unixEndDate];
+
+        if (wallet_id) {
+            query += " AND wallet_id = ?";
+            params.push(wallet_id);
+        }
+
+        if (category_id) {
+            query += " AND category_id = ?";
+            params.push(category_id);
+        }
+
+        if (type && type !== 'all') {
+            query += " AND type = ?";
+            params.push(type);
+        }
+
+        if (search) {
+            query += " AND note LIKE ?";
+            params.push(`%${search}%`);
+        }
+
+        query += " ORDER BY date DESC LIMIT ? OFFSET ?";
+        params.push(limit, (page - 1) * limit);
+
+        const result = await db.getAllAsync<Transaction>(query, ...params);
 
         set((state) => ({
             transactions: page === 1 ? result : [...state.transactions, ...result],

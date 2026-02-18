@@ -5,12 +5,18 @@ import { useWalletStore } from "@/utils/store/wallet.store";
 import { useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { ArrowDownCircle, ArrowUpCircle, Calendar, FileText, Tag, Wallet as WalletIcon } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
 
 export default function TransactionDetails() {
     const { id } = useLocalSearchParams();
     const db = useSQLiteContext();
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
     const { getTransaction } = useTransactionStore();
     const [transaction, setTransaction] = useState<Transaction | null>(null);
     const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -31,7 +37,6 @@ export default function TransactionDetails() {
     if (!transaction) return null;
 
     const isExpense = transaction.type === "expense";
-    const isIncome = transaction.type === "income";
     const date = new Date(transaction.date * 1000);
 
     return (
@@ -54,24 +59,28 @@ export default function TransactionDetails() {
             {/* Details Section */}
             <View style={styles.detailsContainer}>
                 <DetailItem
-                    icon={<WalletIcon size={20} color="#666" strokeWidth={1.5} />}
+                    icon={<WalletIcon size={20} color={activeColors.textMuted} strokeWidth={1.5} />}
                     label="Wallet"
                     value={wallet?.name || "Unknown Wallet"}
+                    activeColors={activeColors}
                 />
                 <DetailItem
-                    icon={<Calendar size={20} color="#666" strokeWidth={1.5} />}
+                    icon={<Calendar size={20} color={activeColors.textMuted} strokeWidth={1.5} />}
                     label="Date"
                     value={date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    activeColors={activeColors}
                 />
                 <DetailItem
-                    icon={<Tag size={20} color="#666" strokeWidth={1.5} />}
+                    icon={<Tag size={20} color={activeColors.textMuted} strokeWidth={1.5} />}
                     label="Category"
                     value={"General"} // Placeholder until category fetching is implemented
+                    activeColors={activeColors}
                 />
+
                 {transaction.note && (
                     <View style={styles.noteSection}>
                         <View style={styles.noteHeader}>
-                            <FileText size={20} color="#666" strokeWidth={1.5} />
+                            <FileText size={20} color={activeColors.textMuted} strokeWidth={1.5} />
                             <Text style={styles.noteLabel}>Note</Text>
                         </View>
                         <Text style={styles.noteText}>{transaction.note}</Text>
@@ -89,22 +98,50 @@ export default function TransactionDetails() {
     );
 }
 
-function DetailItem({ icon, label, value }: { icon: any, label: string, value: string }) {
+function DetailItem({ icon, label, value, activeColors }: { icon: any, label: string, value: string, activeColors: any }) {
+    const itemStyles = createItemStyles(activeColors);
     return (
-        <View style={styles.detailItem}>
-            <View style={styles.detailIconLabel}>
+        <View style={itemStyles.detailItem}>
+            <View style={itemStyles.detailIconLabel}>
                 {icon}
-                <Text style={styles.detailLabel}>{label}</Text>
+                <Text style={itemStyles.detailLabel}>{label}</Text>
             </View>
-            <Text style={styles.detailValue}>{value}</Text>
+            <Text style={itemStyles.detailValue}>{value}</Text>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createItemStyles = (activeColors: any) => StyleSheet.create({
+    detailItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: activeColors.border,
+    },
+    detailIconLabel: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+    },
+    detailLabel: {
+        fontSize: 16,
+        color: activeColors.textMuted,
+        fontFamily: font.HindSiliguri,
+    },
+    detailValue: {
+        fontSize: 16,
+        color: activeColors.text,
+        fontWeight: "600",
+        fontFamily: font.HindSiliguri,
+    },
+});
+
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F8F9FA",
+        backgroundColor: activeColors.background,
     },
     contentContainer: {
         padding: 20,
@@ -122,10 +159,10 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
     },
     expenseBg: {
-        backgroundColor: "#FF4B4B",
+        backgroundColor: activeColors.red,
     },
     incomeBg: {
-        backgroundColor: "#00C853",
+        backgroundColor: activeColors.green,
     },
     typeIconContainer: {
         marginBottom: 12,
@@ -144,7 +181,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     detailsContainer: {
-        backgroundColor: "#fff",
+        backgroundColor: activeColors.card,
         borderRadius: 24,
         padding: 20,
         elevation: 2,
@@ -152,30 +189,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
-    },
-    detailItem: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: "#F1F3F5",
-    },
-    detailIconLabel: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-    },
-    detailLabel: {
-        fontSize: 16,
-        color: "#495057",
-        fontFamily: font.HindSiliguri,
-    },
-    detailValue: {
-        fontSize: 16,
-        color: "#212529",
-        fontWeight: "600",
-        fontFamily: font.HindSiliguri,
     },
     noteSection: {
         marginTop: 20,
@@ -188,26 +201,26 @@ const styles = StyleSheet.create({
     },
     noteLabel: {
         fontSize: 16,
-        color: "#495057",
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
     },
     noteText: {
         fontSize: 15,
-        color: "#666",
+        color: activeColors.text,
         lineHeight: 22,
         fontFamily: font.HindSiliguri,
-        backgroundColor: "#F8F9FA",
+        backgroundColor: activeColors.background,
         padding: 16,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: "#E9ECEF",
+        borderColor: activeColors.border,
     },
     attachmentSection: {
         marginTop: 24,
     },
     attachmentLabel: {
         fontSize: 16,
-        color: "#495057",
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
         marginBottom: 12,
     },

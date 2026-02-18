@@ -1,4 +1,4 @@
-import { LineChart } from '@/components/charts/line-chart';
+import { LineChart, ChartDataPoint, ChartDataset } from '@/components/charts/line-chart';
 import { ViewStyle } from 'react-native';
 
 interface ChartConfig {
@@ -9,28 +9,24 @@ interface ChartConfig {
     showLabels?: boolean;
     animated?: boolean;
     duration?: number;
-    gradient?: boolean;
     interactive?: boolean;
     showYLabels?: boolean;
     yLabelCount?: number;
     yAxisWidth?: number;
 }
 
-interface ChartDataPoint {
-    x: string | number;
-    y: number;
-    label?: string;
-}
-
 type Props = {
-    data: ChartDataPoint[];
+    data?: ChartDataPoint[];
+    datasets?: ChartDataset[];
     config?: ChartConfig;
     style?: ViewStyle;
 };
-export const AreaChart = ({ data, config = {}, style }: Props) => {
+
+export const AreaChart = ({ data, datasets, config = {}, style }: Props) => {
     return (
         <LineChart
             data={data}
+            datasets={datasets}
             config={{ ...config, gradient: true }}
             style={style}
         />

@@ -2,12 +2,18 @@ import { font } from "@/utils/constant";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useMonthYearStore } from "@/utils/store/store";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useBalanceStore } from "@/utils/store/balance.store";
 import { useSQLiteContext } from "expo-sqlite";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
 
 export default function BalanceCard() {
     const db = useSQLiteContext();
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
     const { date, setDate } = useMonthYearStore();
     const { getSummary, summary } = useBalanceStore()
 
@@ -27,13 +33,13 @@ export default function BalanceCard() {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Pressable style={styles.headerButton} aria-label="Previous" onPress={() => handleMonthChange("prev")}>
-                    <ChevronLeft strokeWidth={1} />
+                    <ChevronLeft strokeWidth={1.5} color={activeColors.text} />
                 </Pressable>
                 <Text style={styles.headerText}>{date.toLocaleString("default", { month: "long", year: "numeric" })}</Text>
                 <Pressable style={[styles.headerButton, {
                     opacity: date.getMonth() === new Date().getMonth() ? 0.3 : 1
                 }]} disabled={date.getMonth() === new Date().getMonth()} onPress={() => handleMonthChange("next")} aria-label="Next">
-                    <ChevronRight strokeWidth={1} />
+                    <ChevronRight strokeWidth={1.5} color={activeColors.text} />
                 </Pressable>
             </View>
 
@@ -55,21 +61,26 @@ export default function BalanceCard() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
-        backgroundColor: "#fff",
-        borderRadius: 12,
+        backgroundColor: activeColors.card,
+        borderRadius: 16,
         margin: 16,
-        borderWidth: 0.5,
-        borderColor: "lightgrey",
+        borderWidth: 1,
+        borderColor: activeColors.border,
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 6,
-        borderBottomWidth: 0.5,
-        borderBottomColor: "lightgrey",
+        borderBottomWidth: 1,
+        borderBottomColor: activeColors.border,
         padding: 8,
     },
     headerButton: {
@@ -80,34 +91,38 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
         fontFamily: font.HindSiliguri,
-        color: "#1a1a1aff",
+        color: activeColors.text,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 12,
+        padding: 16,
     },
     column: {
         alignItems: "center",
     },
     label: {
-        fontSize: 16,
-        fontWeight: "500",
+        fontSize: 14,
+        fontWeight: "600",
         fontFamily: font.HindSiliguri,
+        color: activeColors.textMuted,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        marginBottom: 4,
     },
     value: {
-        fontSize: 20,
-        fontWeight: "600",
+        fontSize: 18,
+        fontWeight: "700",
         fontFamily: font.HindSiliguri,
     },
     incomeColor: {
-        color: "#0026ffff",
+        color: activeColors.green,
     },
     expenseColor: {
-        color: "#ff0f0fff",
+        color: activeColors.red,
     },
     balanceColor: {
-        color: "#32a328ff",
+        color: activeColors.text,
     },
 });

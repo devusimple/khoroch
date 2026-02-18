@@ -1,6 +1,8 @@
 import SuspenseFallback from "@/components/suspense";
+import { Icon } from "@/components/ui/icon";
+import { ThemeProvider } from "@/theme/theme-provider";
 import { font } from "@/utils/constant";
-import { migrateDbIfNeeded } from '@/utils/db/client';
+import { migrateDbIfNeeded } from "@/utils/db/client";
 import { useFonts } from "expo-font";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
@@ -27,100 +29,54 @@ export default function RootLayout() {
 
     if (!loaded) return null;
     return (
-        <GestureHandlerRootView>
-            <StatusBar style="dark" animated />
-            <KeyboardProvider>
-                <Suspense fallback={<SuspenseFallback />}>
-                    <SQLiteProvider
-                        databaseName="khoroch.db"
-                        onInit={migrateDbIfNeeded}
-                        useSuspense
-                    >
-                        <Stack>
-                            <Stack.Screen name="index" options={{ headerShown: false }} />
-                            <Stack.Screen name="transaction/create" options={{
-                                title: "Create Transaction", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                                // headerRight(props) {
-                                //     return <Pressable onPress={() => {
-                                //         router.back()
-                                //     }}>
-                                //         <Info strokeWidth={1} size={22} />
-                                //     </Pressable>
-                                // },
-                            }} />
-                            <Stack.Screen name="transaction/update" options={{
-                                title: "Update Transaction", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                            <Stack.Screen name="wallet/create" options={{
-                                title: "Create Wallet", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                            <Stack.Screen name="wallet/index" options={{
-                                title: "Wallets", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                            <Stack.Screen name="settings/index" options={{
-                                title: "Settings", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                            <Stack.Screen name="transaction/[id]/index" options={{
-                                title: "Transaction", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                            <Stack.Screen name="wallet/[id]/index" options={{
-                                title: "Wallet", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                }
-                            }} />
-                            <Stack.Screen name="analysis" options={{
-                                title: "Analysis", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
-                                    return <Pressable onPress={() => {
-                                        router.back()
-                                    }}>
-                                        <ChevronLeft strokeWidth={1} />
-                                    </Pressable>
-                                },
-                            }} />
-                        </Stack>
-                    </SQLiteProvider>
-                </Suspense>
-            </KeyboardProvider>
-        </GestureHandlerRootView>
+        <ThemeProvider>
+            <GestureHandlerRootView>
+                <StatusBar style="auto" animated />
+                <KeyboardProvider>
+                    <Suspense fallback={<SuspenseFallback />}>
+                        <SQLiteProvider
+                            databaseName="khoroch.db"
+                            onInit={migrateDbIfNeeded}
+                            useSuspense
+                        >
+                            <Stack
+                                screenOptions={{
+                                    headerShadowVisible: false,
+                                    headerTitleStyle: {
+                                        fontFamily: font.HindSiliguri,
+                                        fontSize: 18,
+                                    },
+                                    headerTitleAlign: "center",
+                                    headerLeft: () => (
+                                        <Pressable
+                                            onPress={() => router.back()}
+                                            style={({ pressed }) => ({
+                                                opacity: pressed ? 0.5 : 1,
+                                                padding: 8,
+                                                marginLeft: -8,
+                                            })}
+                                        >
+                                            <Icon name={ChevronLeft} lightColor="#000" darkColor="#fff" size={24} />
+                                        </Pressable>
+                                    ),
+                                }}
+                            >
+                                <Stack.Screen name="index" options={{ headerShown: false }} />
+                                <Stack.Screen name="transaction/create" options={{ title: "Create Transaction" }} />
+                                <Stack.Screen name="transaction/update" options={{ title: "Update Transaction" }} />
+                                <Stack.Screen name="settings/index" options={{ title: "Settings" }} />
+                                <Stack.Screen name="transaction/[id]/index" options={{ title: "Transaction Details" }} />
+                                <Stack.Screen name="wallet/create" options={{ title: "Create Wallet" }} />
+                                <Stack.Screen name="wallet/index" options={{ title: "Wallets" }} />
+                                <Stack.Screen name="wallet/[id]/index" options={{ title: "Wallet Details" }} />
+                                <Stack.Screen name="wallet/update" options={{ title: "Update Wallet" }} />
+                                <Stack.Screen name="analysis" options={{ title: "Financial Analysis" }} />
+                                <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+                            </Stack>
+                        </SQLiteProvider>
+                    </Suspense>
+                </KeyboardProvider>
+            </GestureHandlerRootView>
+        </ThemeProvider>
     )
 }

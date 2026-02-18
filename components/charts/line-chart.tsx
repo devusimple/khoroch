@@ -1,5 +1,5 @@
 import { useColor } from '@/hooks/useColor';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { LayoutChangeEvent, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -41,6 +41,12 @@ export type ChartDataPoint = {
   y: number;
   label?: string;
 };
+
+export interface ChartDataset {
+  data: ChartDataPoint[];
+  color?: string;
+  label?: string;
+}
 
 // Utility functions
 const createPath = (points: { x: number; y: number }[]): string => {
@@ -92,12 +98,13 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 type Props = {
-  data: ChartDataPoint[];
+  data?: ChartDataPoint[];           // For backward compatibility
+  datasets?: ChartDataset[];         // For multiple lines/areas
   config?: ChartConfig;
   style?: ViewStyle;
 };
 
-export const LineChart = ({ data, config = {}, style }: Props) => {
+export const LineChart = ({ data, datasets, config = {}, style }: Props) => {
   const [containerWidth, setContainerWidth] = useState(300);
 
   const {
@@ -113,6 +120,13 @@ export const LineChart = ({ data, config = {}, style }: Props) => {
     yLabelCount = 5,
     yAxisWidth = 20,
   } = config;
+
+  // Standardize datasets
+  const activeDatasets = useMemo(() => {
+    if (datasets && datasets.length > 0) return datasets;
+    if (data && data.length > 0) return [{ data, color: undefined }];
+    return [];
+  }, [datasets, data]);
 
   // Use measured width or fallback to config width or default
   const chartWidth = containerWidth || config.width || 300;
@@ -137,27 +151,45 @@ export const LineChart = ({ data, config = {}, style }: Props) => {
     } else {
       animationProgress.value = 1;
     }
-  }, [data, animated, duration]);
+  }, [activeDatasets, animated, duration]);
 
-  if (!data.length) return null;
+  if (!activeDatasets.length) return null;
 
-  const maxValue = Math.max(...data.map((d) => d.y));
-  const minValue = Math.min(...data.map((d) => d.y));
+  // Global scaling calculation
+  const allYValues = activeDatasets.flatMap(ds => ds.data.map(d => d.y));
+  const maxValue = Math.max(...allYValues, 1); // Avoid division by zero
+  const minValue = Math.min(...allYValues, 0);
   const valueRange = maxValue - minValue || 1;
+
+  // Label data (assume all datasets have same x-axis labels if multiple)
+  const xLabels = activeDatasets[0].data;
 
   // Adjust padding to account for y-axis labels
   const leftPadding = showYLabels ? padding + yAxisWidth : padding;
   const innerChartWidth = chartWidth - leftPadding - padding;
   const chartHeight = height - padding * 2;
 
-  // Convert data to screen coordinates
-  const points = data.map((point, index) => ({
-    x: leftPadding + (index / (data.length - 1)) * innerChartWidth,
-    y: padding + ((maxValue - point.y) / valueRange) * chartHeight,
-  }));
+  // Convert all datasets to screen coordinates
+  const preparedDatasets = useMemo(() => {
+    return activeDatasets.map(ds => {
+      const points = ds.data.map((point, index) => {
+        const xPos = ds.data.length > 1
+          ? leftPadding + (index / (ds.data.length - 1)) * innerChartWidth
+          : leftPadding + innerChartWidth / 2;
 
-  const pathData = createPath(points);
-  const areaPathData = gradient ? createAreaPath(points, height - padding) : '';
+        return {
+          x: xPos,
+          y: padding + ((maxValue - point.y) / valueRange) * chartHeight,
+        };
+      });
+      return {
+        ...ds,
+        points,
+        path: createPath(points),
+        areaPath: createAreaPath(points, height - padding)
+      };
+    });
+  }, [activeDatasets, maxValue, minValue, valueRange, leftPadding, innerChartWidth, chartHeight, height, padding]);
 
   // Generate y-axis labels
   const yAxisLabels = [];
@@ -170,20 +202,13 @@ export const LineChart = ({ data, config = {}, style }: Props) => {
     }
   }
 
-  // Fixed animated props for SVG components
-  const areaAnimatedProps = useAnimatedProps(() => ({
+  const commonAnimatedProps = useAnimatedProps(() => ({
     strokeDasharray: animated
       ? `${animationProgress.value * 1000} 1000`
       : undefined,
   }));
 
-  const lineAnimatedProps = useAnimatedProps(() => ({
-    strokeDasharray: animated
-      ? `${animationProgress.value * 1000} 1000`
-      : undefined,
-  }));
-
-  // Pan gesture using new Gesture API
+  // Pan gesture
   const panGesture = Gesture.Pan()
     .onStart((event) => {
       if (interactive) {
@@ -192,14 +217,10 @@ export const LineChart = ({ data, config = {}, style }: Props) => {
       }
     })
     .onUpdate((event) => {
-      if (interactive) {
-        touchX.value = event.x;
-      }
+      if (interactive) touchX.value = event.x;
     })
     .onEnd(() => {
-      if (interactive) {
-        showTooltip.value = false;
-      }
+      if (interactive) showTooltip.value = false;
     });
 
   return (
@@ -208,137 +229,73 @@ export const LineChart = ({ data, config = {}, style }: Props) => {
         <Animated.View>
           <Svg width={chartWidth} height={height}>
             <Defs>
-              {gradient && (
-                <LinearGradient id='gradient' x1='0%' y1='0%' x2='0%' y2='100%'>
-                  <Stop
-                    offset='0%'
-                    stopColor={primaryColor}
-                    stopOpacity='0.3'
-                  />
-                  <Stop
-                    offset='100%'
-                    stopColor={primaryColor}
-                    stopOpacity='0.05'
-                  />
+              {activeDatasets.map((ds, index) => (
+                <LinearGradient key={`grad-${index}`} id={`grad-${index}`} x1='0%' y1='0%' x2='0%' y2='100%'>
+                  <Stop offset='0%' stopColor={ds.color || primaryColor} stopOpacity='0.3' />
+                  <Stop offset='100%' stopColor={ds.color || primaryColor} stopOpacity='0.05' />
                 </LinearGradient>
-              )}
+              ))}
             </Defs>
+
+            {/* Grid lines */}
+            {showGrid && (
+              <G>
+                {yAxisLabels.map((label, index) => (
+                  <Line key={`h-${index}`} x1={leftPadding} y1={label.y} x2={chartWidth - padding} y2={label.y} stroke={mutedColor} strokeWidth={0.5} opacity={0.3} />
+                ))}
+                {preparedDatasets[0].points.map((point, index) => (
+                  <Line key={`v-${index}`} x1={point.x} y1={padding} x2={point.x} y2={height - padding} stroke={mutedColor} strokeWidth={0.5} opacity={0.2} />
+                ))}
+              </G>
+            )}
 
             {/* Y-axis labels */}
             {showYLabels && (
               <G>
                 {yAxisLabels.map((label, index) => (
-                  <SvgText
-                    key={`y-label-${index}`}
-                    x={leftPadding - 10}
-                    y={label.y + 4}
-                    textAnchor='end'
-                    fontSize={10}
-                    fill={mutedColor}
-                  >
+                  <SvgText key={`y-${index}`} x={leftPadding - 10} y={label.y + 4} textAnchor='end' fontSize={10} fill={mutedColor}>
                     {formatNumber(label.value)}
                   </SvgText>
                 ))}
               </G>
             )}
 
-            {/* Grid lines */}
-            {showGrid && (
-              <G>
-                {/* Horizontal grid lines */}
-                {yAxisLabels.map((label, index) => (
-                  <Line
-                    key={`grid-h-${index}`}
-                    x1={leftPadding}
-                    y1={label.y}
-                    x2={chartWidth - padding}
-                    y2={label.y}
-                    stroke={mutedColor}
-                    strokeWidth={0.5}
-                    opacity={0.3}
-                  />
-                ))}
+            {/* Area Fills */}
+            {gradient && preparedDatasets.map((ds, index) => (
+              <AnimatedPath key={`area-${index}`} d={ds.areaPath} fill={`url(#grad-${index})`} animatedProps={commonAnimatedProps} />
+            ))}
 
-                {/* Vertical grid lines */}
-                {points.map((point, index) => (
-                  <Line
-                    key={`grid-v-${index}`}
-                    x1={point.x}
-                    y1={padding}
-                    x2={point.x}
-                    y2={height - padding}
-                    stroke={mutedColor}
-                    strokeWidth={0.5}
-                    opacity={0.2}
-                  />
-                ))}
-              </G>
-            )}
+            {/* Lines */}
+            {preparedDatasets.map((ds, index) => (
+              <AnimatedPath key={`line-${index}`} d={ds.path} stroke={ds.color || primaryColor} strokeWidth={2} fill='none' strokeLinecap='round' strokeLinejoin='round' animatedProps={commonAnimatedProps} />
+            ))}
 
-            {/* Area fill */}
-            {gradient && (
-              <AnimatedPath
-                d={areaPathData}
-                fill='url(#gradient)'
-                animatedProps={areaAnimatedProps}
-              />
-            )}
-
-            {/* Line path */}
-            <AnimatedPath
-              d={pathData}
-              stroke={primaryColor}
-              strokeWidth={2}
-              fill='none'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              animatedProps={lineAnimatedProps}
-            />
-
-            {/* Data points */}
-            {points.map((point, index) => {
-              const pointAnimatedProps = useAnimatedProps(() => ({
-                opacity: animationProgress.value,
-              }));
-
-              const pointAnimatedStyle = useAnimatedStyle(() => ({
-                transform: [
-                  {
-                    scale: withDelay(
-                      index * 50,
-                      withSpring(animationProgress.value)
-                    ),
-                  },
-                ],
-              }));
-
+            {/* Data Points */}
+            {preparedDatasets.map((ds, dsIndex) => ds.points.map((point, index) => {
+              const pointAnimatedProps = useAnimatedProps(() => ({ opacity: animationProgress.value }));
               return (
                 <AnimatedCircle
-                  key={`point-${index}`}
+                  key={`pt-${dsIndex}-${index}`}
                   cx={point.x}
                   cy={point.y}
                   r={4}
-                  fill={primaryColor}
+                  fill={ds.color || primaryColor}
                   animatedProps={pointAnimatedProps}
                 />
               );
-            })}
+            }))}
 
             {/* X-axis labels */}
-            {showLabels && (
+            {showLabels && preparedDatasets.length > 0 && (
               <G>
-                {data.map((point, index) => (
-                  <SvgText
-                    key={`x-label-${index}`}
-                    x={points[index].x}
-                    y={height - 5}
-                    textAnchor='middle'
-                    fontSize={10}
-                    fill={mutedColor}
-                  >
-                    {point.label || point.x.toString()}
-                  </SvgText>
-                ))}
+                {xLabels.map((point, index) => {
+                  const x = preparedDatasets[0].points[index]?.x || 0;
+                  return (
+                    <SvgText key={`x-${index}`} x={x} y={height - 5} textAnchor='middle' fontSize={10} fill={mutedColor}>
+                      {point.label || point.x?.toString() || ''}
+                    </SvgText>
+                  );
+                })}
               </G>
             )}
           </Svg>

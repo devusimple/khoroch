@@ -8,10 +8,10 @@ export interface WalletStore {
     defaultWallet: number;
     setDefaultWallet: (id: number) => Promise<void>;
     getWallets: (db: SQLiteDatabase) => Promise<void>;
-    addWallet: ({ name, avatar, db }: { name: string, avatar?: string, db: SQLiteDatabase }) => Promise<void>;
-    deleteWallet: ({ id, db }: { id: number, db: SQLiteDatabase }) => Promise<void>;
-    updateWallet: ({ id, name, type, icon, initial_amount, db }: { id: number, name: string, type: string, icon?: string, initial_amount: number, db: SQLiteDatabase }) => Promise<void>;
-    getWalletById: ({ id, db }: { id: number, db: SQLiteDatabase }) => Promise<Wallet | null>;
+    addWallet: (params: { name: string, avatar?: string, type?: string, icon?: string, initial_amount?: number, db: SQLiteDatabase }) => Promise<void>;
+    deleteWallet: (params: { id: number, db: SQLiteDatabase }) => Promise<void>;
+    updateWallet: (params: { id: number, name: string, type?: string, icon?: string, initial_amount?: number, db: SQLiteDatabase }) => Promise<void>;
+    getWalletById: (params: { id: number, db: SQLiteDatabase }) => Promise<Wallet | null>;
 }
 
 export const useWalletStore = create<WalletStore>((set) => ({
@@ -25,10 +25,10 @@ export const useWalletStore = create<WalletStore>((set) => ({
         const res = await db.getAllAsync<Wallet>("SELECT * FROM wallets")
         set({ wallets: res })
     },
-    addWallet: async ({ name, avatar, db }) => {
+    addWallet: async ({ name, avatar, type = 'Cash', icon, initial_amount = 0, db }) => {
         const res = await db.runAsync(
-            "INSERT INTO wallets (name, avatar) VALUES (?, ?)",
-            name, avatar ?? null
+            "INSERT INTO wallets (name, avatar, type, icon, initial_amount, current_amount) VALUES (?, ?, ?, ?, ?, ?)",
+            name, avatar ?? null, type, icon ?? null, initial_amount, initial_amount
         )
         if (res.changes === 0) {
             throw new Error("Failed to add wallet")
@@ -44,13 +44,16 @@ export const useWalletStore = create<WalletStore>((set) => ({
         }))
     },
     updateWallet: async ({ id, name, type, icon, initial_amount, db }) => {
-        const res = await db.runAsync(
+        await db.runAsync(
             "UPDATE wallets SET name = ?, type = ?, icon = ?, initial_amount = ? WHERE id = ?",
-            name, type, icon ?? null, initial_amount, id
+            name, type ?? 'Cash', icon ?? null, initial_amount ?? 0, id
         )
-        set((state) => ({
-            wallets: state.wallets.map((wallet) => wallet.id === id ? { ...wallet, name, type, icon, initial_amount } : wallet),
-        }))
+        const updatedWallet = await db.getFirstAsync<Wallet>("SELECT * FROM wallets WHERE id = ?", id)
+        if (updatedWallet) {
+            set((state) => ({
+                wallets: state.wallets.map((wallet) => wallet.id === id ? updatedWallet : wallet),
+            }))
+        }
     },
     getWalletById: async ({ id, db }) => {
         const res = await db.getFirstAsync<Wallet>("SELECT * FROM wallets WHERE id = ?", id)

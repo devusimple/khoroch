@@ -3,6 +3,9 @@ import { Plus } from "lucide-react-native";
 import { Pressable, TouchableOpacity, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useFilterTabStore } from "@/utils/store/store";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
+import { useMemo } from "react";
 
 const TABS = [
     { label: "All", value: "all" },
@@ -12,6 +15,19 @@ const TABS = [
 
 export default function Filter() {
     const { tabs, setTabs } = useFilterTabStore();
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
+    const getActiveTabStyle = (value: string) => {
+        if (tabs !== value) return null;
+        switch (value) {
+            case 'expense': return { backgroundColor: activeColors.red + '20' };
+            case 'income': return { backgroundColor: activeColors.green + '20' };
+            case 'all': return { backgroundColor: activeColors.blue + '20' };
+            default: return styles.activeTab;
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -19,10 +35,9 @@ export default function Filter() {
                 {TABS.map((tab) => (
                     <Pressable
                         key={tab.value}
-                        style={[styles.tab, tabs === tab.value && styles.activeTab,
-                        tab.value === "expense" && tabs === "expense" && { backgroundColor: "#ffebee" },
-                        tab.value === "income" && tabs === "income" && { backgroundColor: "#e8f5e9" },
-                        tab.value === "all" && tabs === "all" && { backgroundColor: "#e3f2fd" }
+                        style={[
+                            styles.tab,
+                            getActiveTabStyle(tab.value)
                         ]}
                         onPress={() => setTabs(tab.value)}
                     >
@@ -39,65 +54,75 @@ export default function Filter() {
                 style={styles.addButton}
             >
                 <Text style={styles.addButtonText}>Add</Text>
-                <Plus strokeWidth={1} size={20} color="#000" />
+                <Plus strokeWidth={1.5} size={20} color={activeColors.text} />
             </TouchableOpacity>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         padding: 16,
-        gap: 32,
+        gap: 16,
     },
     tabWrapper: {
         flexDirection: "row",
-        gap: 10,
-        backgroundColor: "#fff",
-        borderRadius: 6,
-        padding: 5,
+        gap: 8,
+        backgroundColor: activeColors.card,
+        borderRadius: 12,
+        padding: 4,
         flexShrink: 1,
         flexGrow: 1,
         justifyContent: "space-between",
         alignItems: "center",
-        borderColor: "#ddd",
-        borderWidth: 0.5,
+        borderColor: activeColors.border,
+        borderWidth: 1,
     },
     tab: {
-        padding: 5,
-        borderRadius: 6,
-        backgroundColor: "#fff",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
         flexGrow: 1,
+        alignItems: "center",
+        justifyContent: "center",
     },
     activeTab: {
-        backgroundColor: "#f0f0f0",
+        backgroundColor: activeColors.background,
     },
     tabText: {
         fontFamily: font.HindSiliguri,
         textAlign: "center",
-        fontWeight: "normal",
+        fontWeight: "500",
         fontSize: 14,
-        color: "#666",
+        color: activeColors.textMuted,
     },
     activeTabText: {
-        color: "#000",
+        color: activeColors.text,
+        fontWeight: "700",
     },
     addButton: {
-        padding: 10,
-        borderRadius: 6,
-        backgroundColor: "#fff",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: activeColors.card,
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
-        borderColor: "#ddd",
-        borderWidth: 0.5,
+        gap: 6,
+        borderColor: activeColors.border,
+        borderWidth: 1,
+        elevation: 1,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
     addButtonText: {
         fontFamily: font.HindSiliguri,
-        textAlign: "center",
+        fontWeight: "600",
         fontSize: 14,
+        color: activeColors.text,
     },
 });

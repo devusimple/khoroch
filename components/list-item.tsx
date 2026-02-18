@@ -2,17 +2,23 @@ import { Transaction, Wallet } from "@/types";
 import { font } from "@/utils/constant";
 import { router } from "expo-router";
 import { Calendar, Edit2, Eye, MoreVertical, Share2, Trash2, WalletIcon } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import Popover, { PopoverItem } from "./popover";
 
 import { useTransactionStore } from "@/utils/store/transaction.store";
 import { useWalletStore } from "@/utils/store/wallet.store";
 import { useSQLiteContext } from "expo-sqlite";
+import { useModeToggle } from "@/hooks/useModeToggler";
+import { Colors } from "@/theme/colors";
 
 
 export default function TransactionCard({ item }: { item: Transaction }) {
     const db = useSQLiteContext()
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
+
     const [popoverVisible, setPopoverVisible] = useState(false);
     const [popoverAnchor, setPopoverAnchor] = useState<{ x: number, y: number, width: number, height: number, pageX: number, pageY: number } | null>(null);
     const iconRef = useRef<View>(null);
@@ -52,30 +58,38 @@ export default function TransactionCard({ item }: { item: Transaction }) {
         setPopoverVisible(false);
     }
 
+    const getCardBackground = () => {
+        if (item.type === "expense") return activeColors.red + '10';
+        if (item.type === "income") return activeColors.green + '10';
+        return activeColors.card;
+    };
+
     return (
         <View style={styles.container}>
-            <View style={[styles.card, { backgroundColor: item.type === "expense" ? "#fff6f6ff" : item.type === "income" ? "#f3fff5ff" : "transparent" }]}>
+            <View style={[styles.card, { backgroundColor: getCardBackground() }]}>
                 <View style={styles.header}>
                     <View style={styles.titleWrapper}>
                         <Text style={styles.titleText} numberOfLines={2}>
                             {item.note}
                         </Text>
                     </View>
-                    <Text style={[styles.amountText, { color: item.type === "income" ? "#0026ffff" : "#ff0f0fff" }]}>{item.amount}</Text>
+                    <Text style={[styles.amountText, { color: item.type === "income" ? activeColors.green : activeColors.red }]}>
+                        {item.type === "income" ? '+' : '-'} ৳ {item.amount.toLocaleString()}
+                    </Text>
                     <View ref={iconRef} collapsable={false}>
                         <Pressable onPress={handleOptionsPress} hitSlop={10}>
-                            <MoreVertical size={20} color="#6a6b6eff" strokeWidth={1} />
+                            <MoreVertical size={20} color={activeColors.textMuted} strokeWidth={1.5} />
                         </Pressable>
                     </View>
                 </View>
 
                 <View style={styles.footer}>
                     <View style={styles.metaItem}>
-                        <Calendar strokeWidth={1} size={10} color="#6a6b6eff" />
+                        <Calendar strokeWidth={1.5} size={12} color={activeColors.textMuted} />
                         <Text style={styles.metaText}>{new Date(item.date * 1000).toLocaleDateString("en", { day: "2-digit", month: "short", year: "numeric" })}</Text>
                     </View>
                     <View style={styles.metaItem}>
-                        <WalletIcon strokeWidth={1} size={10} color="#6a6b6eff" />
+                        <WalletIcon strokeWidth={1.5} size={12} color={activeColors.textMuted} />
                         <Text style={styles.metaText}>{wallet?.name}</Text>
                     </View>
                 </View>
@@ -132,19 +146,18 @@ export default function TransactionCard({ item }: { item: Transaction }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: 16,
         marginVertical: 4,
     },
     card: {
-        padding: 8,
-        borderRadius: 8,
-        gap: 12,
-        // backgroundColor: "#FBF3F1",
-        borderWidth: 0.3,
-        borderColor: "#ddd",
+        padding: 12,
+        borderRadius: 12,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: activeColors.border,
     },
     header: {
         flexDirection: "row",
@@ -156,9 +169,10 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     titleText: {
-        fontSize: 13,
+        fontSize: 14,
         fontFamily: font.HindSiliguri,
-        color: "#333",
+        color: activeColors.text,
+        fontWeight: "500",
     },
     amountText: {
         fontSize: 16,
@@ -170,6 +184,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        marginTop: 4,
     },
     metaItem: {
         flexDirection: "row",
@@ -177,8 +192,8 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     metaText: {
-        fontSize: 10,
-        color: "#6a6b6eff",
+        fontSize: 11,
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
     },
 });

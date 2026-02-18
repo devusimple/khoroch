@@ -3,14 +3,28 @@ import { font } from "@/utils/constant";
 import { useWalletStore } from "@/utils/store/wallet.store";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Banknote, ChevronRight, CreditCard, Landmark, Megaphone, Plus, TrendingUp, Wallet as WalletIcon } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import {
+    ArrowDownLeft,
+    ArrowUpRight,
+    Banknote,
+    ChevronRight,
+    CreditCard,
+    Landmark,
+    Plus,
+    Wallet as WalletIcon
+} from "lucide-react-native";
+import { useEffect, useState, useMemo } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Colors } from "@/theme/colors";
+import { useModeToggle } from "@/hooks/useModeToggler";
 
 
 export default function WalletIndex() {
     const { wallets, getWallets } = useWalletStore();
     const db = useSQLiteContext();
+    const { isDark } = useModeToggle();
+    const activeColors = isDark ? Colors.dark : Colors.light;
+    const styles = useMemo(() => createStyles(activeColors, isDark), [activeColors, isDark]);
 
     const [totalIncomes, setTotalIncomes] = useState(0);
     const [totalExpenses, setTotalExpenses] = useState(0);
@@ -39,22 +53,30 @@ export default function WalletIndex() {
     }, [db]);
 
     const renderWalletItem = ({ item }: { item: Wallet }) => {
+        const Icon = getWalletIcon(item.type);
+        const color = getWalletColor(item.type, activeColors);
+
         return (
-            <Pressable style={styles.walletCard} onPress={() => { router.push({ pathname: "/wallet/[id]", params: { id: item.id } }) }}>
-                <View style={styles.walletIconContainer}>
-                    {item.avatar
-                        ?
-                        <Image source={{ uri: item.avatar! }} style={{ width: 48, height: 48, borderRadius: 14 }} />
-                        :
-                        <Megaphone size={24} color="#333" strokeWidth={1.5} />
-                    }
+            <Pressable
+                style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+                onPress={() => router.push({ pathname: "/wallet/[id]", params: { id: item.id } })}
+            >
+                <View style={[styles.walletIconContainer, { backgroundColor: color + '15' }]}>
+                    {item.avatar ? (
+                        <Image source={{ uri: item.avatar }} style={styles.walletAvatar} />
+                    ) : (
+                        <Icon size={24} color={color} />
+                    )}
                 </View>
                 <View style={styles.walletInfo}>
                     <Text style={styles.walletName}>{item.name}</Text>
-                    <Text style={styles.walletType}>{new Date(item.updated_at).toLocaleString("en", { month: "long", day: "2-digit", year: 'numeric', hour12: true, hour: 'numeric', minute: 'numeric' })}</Text>
+                    <Text style={styles.walletUpdated}>
+                        Last used {new Date(item.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
                 </View>
                 <View style={styles.balanceInfo}>
-                    <ChevronRight size={18} color="#CCC" />
+                    <Text style={styles.walletBalanceText}>৳ {item.current_amount.toLocaleString()}</Text>
+                    <ChevronRight size={18} color={activeColors.border} />
                 </View>
             </Pressable>
         );
@@ -62,30 +84,41 @@ export default function WalletIndex() {
 
     return (
         <View style={styles.container}>
-            {/* Summary Header */}
-            <View style={{
-                paddingHorizontal: 20,
-                paddingBottom: 20,
-                gap: 6
-            }}>
-                <View style={styles.header}>
-                    <View style={[styles.summaryCard, { backgroundColor: '#4b57fdff' }]}>
-                        <Text style={styles.totalAmount}>+ ৳ {totalIncomes}</Text>
-                    </View>
-                    <View style={[styles.summaryCard, { backgroundColor: '#f34e4eff' }]}>
-                        <Text style={styles.totalAmount}>- ৳ {totalExpenses}</Text>
-                    </View>
+            {/* Net Worth Dashboard */}
+            <View style={styles.dashboard}>
+                <View style={styles.netWorthCard}>
+                    <Text style={styles.netWorthLabel}>Estimated Net Worth</Text>
+                    <Text style={styles.netWorthAmount}>৳ {(totalIncomes - totalExpenses).toLocaleString()}</Text>
                 </View>
-                <View style={[styles.summaryCard, { backgroundColor: '#2d2e36ff' }]}>
-                    <Text style={styles.totalAmount}>৳ {totalIncomes - totalExpenses}</Text>
+
+                <View style={styles.summaryRow}>
+                    <View style={styles.miniSummaryCard}>
+                        <View style={[styles.miniIconBox, { backgroundColor: activeColors.green + '20' }]}>
+                            <ArrowDownLeft size={16} color={activeColors.green} />
+                        </View>
+                        <View>
+                            <Text style={styles.miniLabel}>Total Income</Text>
+                            <Text style={[styles.miniValue, { color: activeColors.green }]}>+ ৳ {totalIncomes.toLocaleString()}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.miniSummaryCard}>
+                        <View style={[styles.miniIconBox, { backgroundColor: activeColors.red + '20' }]}>
+                            <ArrowUpRight size={16} color={activeColors.red} />
+                        </View>
+                        <View>
+                            <Text style={styles.miniLabel}>Total Expense</Text>
+                            <Text style={[styles.miniValue, { color: activeColors.red }]}>- ৳ {totalExpenses.toLocaleString()}</Text>
+                        </View>
+                    </View>
                 </View>
             </View>
 
             {/* Wallet List Section */}
             <View style={styles.listContainer}>
                 <View style={styles.listHeader}>
-                    <Text style={styles.listTitle}>Your Wallets</Text>
-                    <Text style={styles.listSubtitle}>{wallets.length} active wallets</Text>
+                    <Text style={styles.listTitle}>Portfolio</Text>
+                    <Text style={styles.listSubtitle}>{wallets.length} accounts tracking</Text>
                 </View>
 
                 <FlatList
@@ -93,85 +126,143 @@ export default function WalletIndex() {
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderWalletItem}
                     contentContainerStyle={styles.listContent}
-                    ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
                     showsVerticalScrollIndicator={false}
-                    initialNumToRender={10}
-                    maxToRenderPerBatch={10}
-                    windowSize={10}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <WalletIcon size={48} color="#DDD" />
-                            <Text style={styles.emptyText}>No wallets found</Text>
+                            <WalletIcon size={48} color={activeColors.textMuted} />
+                            <Text style={styles.emptyText}>No accounts added yet</Text>
                         </View>
                     }
                 />
             </View>
 
             {/* Floating Action Button */}
-            <Pressable style={styles.fab} onPress={() => router.navigate('/wallet/create')}>
-                <Plus size={28} color="#fff" />
+            <Pressable
+                style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.9 }] }]}
+                onPress={() => router.navigate('/wallet/create')}
+            >
+                <Plus size={32} color={activeColors.primaryForeground} />
             </Pressable>
         </View>
     );
 }
 
-
 function getWalletIcon(type: string) {
-    if (type === 'bank') return Landmark;
-    if (type === 'credit') return CreditCard;
-    return Banknote;
+    switch (type?.toLowerCase()) {
+        case 'bank': return Landmark;
+        case 'credit': return CreditCard;
+        default: return Banknote;
+    }
 }
 
-const styles = StyleSheet.create({
+function getWalletColor(type: string, activeColors: any) {
+    switch (type?.toLowerCase()) {
+        case 'bank': return activeColors.blue;
+        case 'credit': return activeColors.orange;
+        default: return activeColors.purple;
+    }
+}
+
+const createStyles = (activeColors: typeof Colors.light, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F8F9FA",
+        backgroundColor: activeColors.background,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        gap: 6
+    dashboard: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 24,
+        backgroundColor: activeColors.background,
     },
-    summaryCard: {
-        borderRadius: 4,
-        flexGrow: 1,
-        padding: 6,
-        paddingVertical: 12,
+    netWorthCard: {
+        backgroundColor: isDark ? activeColors.card : "#1C1C1E",
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 16,
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        borderWidth: isDark ? 1 : 0,
+        borderColor: activeColors.border,
     },
-    totalAmount: {
-        color: "#fff",
-        fontSize: 16,
+    netWorthLabel: {
+        fontSize: 14,
+        color: isDark ? activeColors.textMuted : "#8E8E93",
+        fontWeight: "600",
+        letterSpacing: 0.5,
+        textTransform: "uppercase",
+        marginBottom: 8,
+    },
+    netWorthAmount: {
+        fontSize: 34,
+        color: "#FFFFFF",
         fontWeight: "bold",
         fontFamily: font.HindSiliguri,
-        textAlign: "center",
+    },
+    summaryRow: {
+        flexDirection: "row",
+        gap: 12,
+    },
+    miniSummaryCard: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: activeColors.card,
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: activeColors.border,
+    },
+    miniIconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 10,
+    },
+    miniLabel: {
+        fontSize: 10,
+        color: activeColors.textMuted,
+        fontWeight: "bold",
+        textTransform: "uppercase",
+    },
+    miniValue: {
+        fontSize: 14,
+        fontWeight: "700",
+        fontFamily: font.HindSiliguri,
     },
     listContainer: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: isDark ? activeColors.background : activeColors.card,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         paddingTop: 24,
         paddingHorizontal: 20,
-        elevation: 4,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        borderTopWidth: isDark ? 1 : 0,
+        borderColor: activeColors.border,
     },
     listHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
         marginBottom: 20,
+        paddingHorizontal: 4,
     },
     listTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: "bold",
-        color: "#2D3436",
+        color: activeColors.text,
         fontFamily: font.HindSiliguri,
     },
     listSubtitle: {
-        fontSize: 14,
-        color: "#999",
+        fontSize: 13,
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
+        marginBottom: 2,
     },
     listContent: {
         paddingBottom: 100,
@@ -179,76 +270,79 @@ const styles = StyleSheet.create({
     walletCard: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#F8F9FA",
+        backgroundColor: activeColors.card,
         padding: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: "#EDF2F7",
+        borderColor: activeColors.border,
     },
     walletIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: "#fff",
+        width: 52,
+        height: 52,
+        borderRadius: 16,
         justifyContent: "center",
         alignItems: "center",
-        elevation: 1,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
+    },
+    walletAvatar: {
+        width: 52,
+        height: 52,
+        borderRadius: 16,
     },
     walletInfo: {
         flex: 1,
         marginLeft: 16,
     },
     walletName: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#2D3436",
+        fontSize: 17,
+        fontWeight: "bold",
+        color: activeColors.text,
         fontFamily: font.HindSiliguri,
     },
-    walletType: {
-        fontSize: 12,
-        color: "#636E72",
+    walletUpdated: {
+        fontSize: 13,
+        color: activeColors.textMuted,
         marginTop: 2,
         fontFamily: font.HindSiliguri,
     },
     balanceInfo: {
-        flexDirection: "row",
         alignItems: "center",
+        flexDirection: "row",
         gap: 8,
     },
-    walletBalance: {
-        fontSize: 16,
-        fontWeight: "bold",
+    walletBalanceText: {
+        fontSize: 17,
+        fontWeight: "700",
+        color: activeColors.text,
         fontFamily: font.HindSiliguri,
+    },
+    separator: {
+        height: 12,
     },
     fab: {
         position: "absolute",
         bottom: 30,
         right: 24,
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: "#2D3436",
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: activeColors.primary,
         justifyContent: "center",
         alignItems: "center",
-        elevation: 8,
-        shadowColor: "#000",
+        elevation: 5,
+        shadowColor: activeColors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 10,
+        shadowRadius: 8,
     },
     emptyContainer: {
+        paddingTop: 60,
         alignItems: "center",
         justifyContent: "center",
-        paddingTop: 60,
-        gap: 12,
     },
     emptyText: {
+        marginTop: 12,
         fontSize: 16,
-        color: "#CCC",
+        color: activeColors.textMuted,
         fontFamily: font.HindSiliguri,
     },
 });

@@ -12,7 +12,12 @@ PRAGMA optimize;
 CREATE TABLE IF NOT EXISTS wallets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    avatar TEXT
+    avatar TEXT,
+    type TEXT NOT NULL DEFAULT 'Cash',
+    icon TEXT,
+    initial_amount REAL NOT NULL DEFAULT 0,
+    current_amount REAL NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
