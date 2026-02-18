@@ -55,10 +55,10 @@ export default function WalletDetails() {
                     </View>
                     <View style={{ justifyContent: 'space-between' }}>
                         <View style={{ backgroundColor: "#db0000ff", padding: 6, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: "#fff" }}>৳{(totalExpense).toString()}</Text>
+                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: "#fff" }}>Expense: ৳{(totalExpense).toString()}</Text>
                         </View>
                         <View style={{ backgroundColor: "#00990dff", padding: 6, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: '#fff' }}>৳{(totalIncomes).toString()}</Text>
+                            <Text style={{ fontSize: 16, fontFamily: font.HindSiliguri, color: '#fff' }}>Income: ৳{(totalIncomes).toString()}</Text>
                         </View>
                     </View>
                 </View>

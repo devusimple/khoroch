@@ -1,6 +1,7 @@
 import { font } from "@/utils/constant";
 import { router } from "expo-router";
 import { AreaChartIcon, Bell, Settings2, SunDim, Wallet2 } from "lucide-react-native";
+import { ToastAndroid } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,13 +15,17 @@ export default function Header() {
                 <Text style={styles.logoText}>KHOROCH</Text>
             </Pressable>
             <View style={styles.actionsContainer}>
-                <Pressable onPress={() => { }} style={styles.headerButton}>
+                <Pressable onPress={() => { router.push('/analysis') }} style={styles.headerButton}>
                     <AreaChartIcon size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
-                <Pressable onPress={() => { }} style={styles.headerButton}>
+                <Pressable onPress={() => {
+                    ToastAndroid.show("The Theme feature is not available yet", ToastAndroid.LONG);
+                }} style={styles.headerButton}>
                     <SunDim size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
-                <Pressable onPress={() => { }} style={styles.headerButton}>
+                <Pressable onPress={() => {
+                    ToastAndroid.show("The Notification feature is not available yet", ToastAndroid.LONG);
+                }} style={styles.headerButton}>
                     <Bell size={20} strokeWidth={1} color={"#000"} />
                 </Pressable>
                 <Pressable onPress={() => { router.push("/settings") }} style={styles.headerButton}>

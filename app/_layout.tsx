@@ -28,7 +28,7 @@ export default function RootLayout() {
     if (!loaded) return null;
     return (
         <GestureHandlerRootView>
-            <StatusBar style="auto" />
+            <StatusBar style="dark" animated />
             <KeyboardProvider>
                 <Suspense fallback={<SuspenseFallback />}>
                     <SQLiteProvider
@@ -107,6 +107,15 @@ export default function RootLayout() {
                                         <ChevronLeft strokeWidth={1} />
                                     </Pressable>
                                 }
+                            }} />
+                            <Stack.Screen name="analysis" options={{
+                                title: "Analysis", headerShadowVisible: false, headerTitleStyle: { fontFamily: font.HindSiliguri }, headerTitleAlign: "center", headerLeft(props) {
+                                    return <Pressable onPress={() => {
+                                        router.back()
+                                    }}>
+                                        <ChevronLeft strokeWidth={1} />
+                                    </Pressable>
+                                },
                             }} />
                         </Stack>
                     </SQLiteProvider>

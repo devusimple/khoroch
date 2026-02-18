@@ -4,7 +4,7 @@ import { useWalletStore } from "@/utils/store/wallet.store";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Banknote, ChevronRight, CreditCard, Landmark, Megaphone, Plus, TrendingUp, Wallet as WalletIcon } from "lucide-react-native";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 
@@ -12,13 +12,31 @@ export default function WalletIndex() {
     const { wallets, getWallets } = useWalletStore();
     const db = useSQLiteContext();
 
+    const [totalIncomes, setTotalIncomes] = useState(0);
+    const [totalExpenses, setTotalExpenses] = useState(0);
+
+    const getIncomes = async () => {
+        const incomes = await db.getAllAsync<{ total_income: number }>(
+            'SELECT SUM(amount) as total_income FROM transactions WHERE type = "income"'
+        );
+        setTotalIncomes(incomes[0].total_income ?? 0);
+    };
+
+    const getExpenses = async () => {
+        const expenses = await db.getAllAsync<{ total_expense: number }>(
+            'SELECT SUM(amount) as total_expense FROM transactions WHERE type = "expense"'
+        );
+        setTotalExpenses(expenses[0].total_expense ?? 0);
+    };
+
+    useEffect(() => {
+        getIncomes();
+        getExpenses();
+    }, [db]);
+
     useEffect(() => {
         getWallets(db);
     }, [db]);
-
-    const totalBalance = useMemo(() => {
-        return wallets.reduce((acc, wallet) => acc + (wallet.id || 0), 0);
-    }, [wallets]);
 
     const renderWalletItem = ({ item }: { item: Wallet }) => {
         return (
@@ -26,19 +44,16 @@ export default function WalletIndex() {
                 <View style={styles.walletIconContainer}>
                     {item.avatar
                         ?
-                        <Image source={{ uri: item.avatar! }} style={{ width: 32, height: 32, borderRadius: 14 }} />
+                        <Image source={{ uri: item.avatar! }} style={{ width: 48, height: 48, borderRadius: 14 }} />
                         :
                         <Megaphone size={24} color="#333" strokeWidth={1.5} />
                     }
                 </View>
                 <View style={styles.walletInfo}>
                     <Text style={styles.walletName}>{item.name}</Text>
-                    <Text style={styles.walletType}>{new Date(item.created_at).toLocaleString("en", { month: "long", day: "2-digit", year: 'numeric', hour12: true, hour: 'numeric', minute: 'numeric' })}</Text>
+                    <Text style={styles.walletType}>{new Date(item.updated_at).toLocaleString("en", { month: "long", day: "2-digit", year: 'numeric', hour12: true, hour: 'numeric', minute: 'numeric' })}</Text>
                 </View>
                 <View style={styles.balanceInfo}>
-                    <Text style={[styles.walletBalance, { color: item.id >= 0 ? "#00C853" : "#FF4B4B" }]}>
-                        ৳{item.id}
-                    </Text>
                     <ChevronRight size={18} color="#CCC" />
                 </View>
             </Pressable>
@@ -48,13 +63,21 @@ export default function WalletIndex() {
     return (
         <View style={styles.container}>
             {/* Summary Header */}
-            <View style={styles.header}>
-                <View style={styles.summaryCard}>
-                    <View style={styles.summaryIconText}>
-                        <TrendingUp size={24} color="rgba(255,255,255,0.8)" />
-                        <Text style={styles.summaryLabel}>Total Net Worth</Text>
+            <View style={{
+                paddingHorizontal: 20,
+                paddingBottom: 20,
+                gap: 6
+            }}>
+                <View style={styles.header}>
+                    <View style={[styles.summaryCard, { backgroundColor: '#4b57fdff' }]}>
+                        <Text style={styles.totalAmount}>+ ৳ {totalIncomes}</Text>
                     </View>
-                    <Text style={styles.totalAmount}>৳{totalBalance.toLocaleString()}</Text>
+                    <View style={[styles.summaryCard, { backgroundColor: '#f34e4eff' }]}>
+                        <Text style={styles.totalAmount}>- ৳ {totalExpenses}</Text>
+                    </View>
+                </View>
+                <View style={[styles.summaryCard, { backgroundColor: '#2d2e36ff' }]}>
+                    <Text style={styles.totalAmount}>৳ {totalIncomes - totalExpenses}</Text>
                 </View>
             </View>
 
@@ -105,37 +128,23 @@ const styles = StyleSheet.create({
         backgroundColor: "#F8F9FA",
     },
     header: {
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        gap: 6
     },
     summaryCard: {
-        backgroundColor: "#2D3436", // Sleek dark aesthetic
-        borderRadius: 24,
-        padding: 24,
-        elevation: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-    },
-    summaryIconText: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 8,
-    },
-    summaryLabel: {
-        color: "rgba(255,255,255,0.7)",
-        fontSize: 14,
-        fontFamily: font.HindSiliguri,
-        letterSpacing: 0.5,
+        borderRadius: 4,
+        flexGrow: 1,
+        padding: 6,
+        paddingVertical: 12,
     },
     totalAmount: {
         color: "#fff",
-        fontSize: 32,
+        fontSize: 16,
         fontWeight: "bold",
         fontFamily: font.HindSiliguri,
+        textAlign: "center",
     },
     listContainer: {
         flex: 1,
